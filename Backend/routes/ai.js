@@ -106,7 +106,6 @@ router.post("/chat", auth, aiLimiter, async (req, res) => {
             
             if (user.goal) parts.push(`Their current fitness goal is ${user.goal}.`);
             if (tier) parts.push(`They are on the ${tier} training tier.`);
-            if (user.isPremium) parts.push(`They have a Premium membership.`);
             if (user.wellnessData && user.wellnessData.streak) parts.push(`They currently have a ${user.wellnessData.streak}-day streak!`);
             
             if (parts.length > 0) userContext = parts.join(" ") + "\n\n";
