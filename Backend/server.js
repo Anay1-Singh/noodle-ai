@@ -10,6 +10,7 @@ const { clean: xssClean } = require("xss-clean/lib/xss");
 const cookieParser = require("cookie-parser");
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Global rate limiter — 30 requests per minute per IP
 const limiter = rateLimit({
