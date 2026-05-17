@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Send, Brain, Sparkles, RefreshCw, ArrowLeft,
-  Plus, MessageSquare, Trash2, X, PanelLeftClose, PanelLeft,
+  Plus, MessageSquare, Trash2, X, PanelLeftClose, PanelLeft, Square,
   Activity, Apple, Dumbbell, Droplets, CalendarDays, Beef, Pill, TrendingUp, Flame, BarChart4, Trophy, Zap
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -72,6 +72,8 @@ export default function NoodleChat({
   onLoadChat,
   onDeleteChat,
   activeChatId,
+  thinkingText,
+  onStop,
 }) {
   const [input, setInput] = useState('');
   const [prompts, setPrompts] = useState(PROMPTS[tier] || PROMPTS.easy);
@@ -336,6 +338,30 @@ export default function NoodleChat({
                   </motion.div>
                 ))}
 
+                {/* Thinking indicator */}
+                <AnimatePresence>
+                  {isLoading && thinkingText && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      className="flex gap-4 w-full overflow-hidden origin-top"
+                    >
+                      <div className="w-8 h-8 shrink-0" /> {/* Empty spacing for alignment */}
+                      <div className="flex-1 max-w-[85%] rounded-2xl rounded-tl-md px-5 py-4 relative"
+                        style={{ background: 'rgba(255,255,255,0.02)', borderLeft: `3px solid ${theme.accent}` }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="w-3.5 h-3.5 animate-pulse" style={{ color: theme.accent }} />
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-white/50">Thinking...</span>
+                        </div>
+                        <div className="text-[12px] leading-relaxed text-white/40 line-clamp-4 font-normal" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                          {thinkingText}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Typing indicator */}
                 {isLoading && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
@@ -401,19 +427,30 @@ export default function NoodleChat({
                   <span className="text-[11px] font-medium" style={{ color: input.length > 900 ? '#ef4444' : 'rgba(255,255,255,0.15)' }}>
                     {input.length}/1000
                   </span>
-                  <motion.button
-                    onClick={handleSend}
-                    disabled={!input.trim() || isLoading || limitReached}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.92 }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                    style={{
-                      background: input.trim() && !isLoading && !limitReached ? theme.accent : 'rgba(255,255,255,0.06)',
-                      border: 'none',
-                      cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
-                    }}>
-                    <Send className="w-3.5 h-3.5" style={{ color: input.trim() && !isLoading ? '#000' : 'rgba(255,255,255,0.2)' }} />
-                  </motion.button>
+                  {isLoading ? (
+                    <motion.button
+                      onClick={onStop}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.92 }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                      style={{ background: 'rgba(239, 68, 68, 0.15)', cursor: 'pointer' }}>
+                      <Square className="w-3.5 h-3.5" style={{ color: '#ef4444', fill: '#ef4444' }} />
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      onClick={handleSend}
+                      disabled={!input.trim() || limitReached}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.92 }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                      style={{
+                        background: input.trim() && !limitReached ? theme.accent : 'rgba(255,255,255,0.06)',
+                        border: 'none',
+                        cursor: input.trim() ? 'pointer' : 'not-allowed',
+                      }}>
+                      <Send className="w-3.5 h-3.5" style={{ color: input.trim() ? '#000' : 'rgba(255,255,255,0.2)' }} />
+                    </motion.button>
+                  )}
                 </div>
               </div>
             </div>

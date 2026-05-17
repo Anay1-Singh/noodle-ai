@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Crown, Camera, Pencil, ScanFace } from 'lucide-react';
-import { AnimatedBanner, AvatarRing } from './ProfileBar';
+import { AnimatedBanner, AvatarRing, AVATAR_DECORATIONS } from './ProfileBar';
 
 /* ──────────────────────────────────────────────────────────
    AVATAR DATA — DiceBear 'adventurer' (same style as before)
@@ -40,6 +40,14 @@ const C = {
   label:  '#b5bac1',
 };
 
+const readStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  } catch {
+    return {};
+  }
+};
+
 export default function AvatarSelectModal({ isOpen, onClose, onSelect, currentAvatar }) {
   const [tab, setTab]           = useState('male');
   const [pending, setPending]   = useState(null);
@@ -54,24 +62,27 @@ export default function AvatarSelectModal({ isOpen, onClose, onSelect, currentAv
   const [view, setView]         = useState('profile');
   const [bannerTheme, setBannerTheme] = useState('none');
   const [avatarDecor, setAvatarDecor] = useState('none');
+  const [originalAvatarDecor, setOriginalAvatarDecor] = useState(() => readStoredUser().avatarDecoration || 'none');
 
   useEffect(() => {
     if (!isOpen) return;
-    setPending(null); setScanning(false); setScanDone(false); setView('profile');
-    try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
+    const id = window.setTimeout(() => {
+      setPending(null); setScanning(false); setScanDone(false); setView('profile');
+      const u = readStoredUser();
       setBanner(u.bannerColor || C.blue); setPendBanner(null);
       setBio(u.bio || '');    setPendBio(u.bio || '');
       setName(u.name || '');  setPendName(u.name || '');
       setBannerTheme(u.bannerTheme || 'none');
       setAvatarDecor(u.avatarDecoration || 'none');
-    } catch {}
+      setOriginalAvatarDecor(u.avatarDecoration || 'none');
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [isOpen]);
 
   const avs = tab === 'male' ? MALE_AV : FEMALE_AV;
   const prevAv = pending || currentAvatar;
   const prevBn = pendBanner || banner;
-  const dirty  = !!(pending || pendBanner || pendBio !== bio || pendName !== name);
+  const dirty  = !!(pending || pendBanner || pendBio !== bio || pendName !== name || avatarDecor !== originalAvatarDecor);
 
   const doScan = () => {
     setScanning(true); setScanDone(false);
@@ -85,13 +96,16 @@ export default function AvatarSelectModal({ isOpen, onClose, onSelect, currentAv
 
   const doSave = () => {
     try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = readStoredUser();
       if (pending) u.avatar = pending;
       if (pendBanner) u.bannerColor = pendBanner;
       u.bio = pendBio; u.name = pendName;
+      u.avatarDecoration = avatarDecor;
       localStorage.setItem('user', JSON.stringify(u));
       window.dispatchEvent(new Event('noodle_profile_update'));
-    } catch {}
+    } catch {
+      // Local profile updates are best effort; closing keeps the modal usable.
+    }
     if (pending) onSelect(pending);
     onClose();
   };
@@ -220,6 +234,36 @@ export default function AvatarSelectModal({ isOpen, onClose, onSelect, currentAv
                                 outline: prevBn === c ? '2px solid #fff' : 'none',
                                 outlineOffset: 2,
                               }} />
+                          ))}
+                        </div>
+
+                        {/* Avatar Decoration Picker */}
+                        <label className="block text-[11px] font-bold uppercase tracking-wide mt-4 mb-1" style={{ color: C.label }}>Avatar Decoration ✦</label>
+                        <p className="text-[10px] mb-2.5" style={{ color: C.faint }}>Animated ring with orbiting particles around your avatar</p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {AVATAR_DECORATIONS.map(d => (
+                            <button key={d.id} onClick={() => setAvatarDecor(d.id)}
+                              className="flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-lg transition-all hover:scale-105"
+                              style={{
+                                background: avatarDecor === d.id ? `${C.blue}30` : 'rgba(255,255,255,0.03)',
+                                border: avatarDecor === d.id ? `1px solid ${C.blue}` : '1px solid rgba(255,255,255,0.06)',
+                              }}>
+                              {/* Live preview — larger size with overflow visible */}
+                              <div style={{ width: 48, height: 48, position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AvatarRing decoration={d.id} size={36} />
+                                <div style={{
+                                  width: 36, height: 36, borderRadius: '50%',
+                                  background: d.id === 'none' ? C.input : `linear-gradient(135deg, ${C.bg}, ${C.dark})`,
+                                  border: '2px solid rgba(255,255,255,0.15)',
+                                  position: 'relative', zIndex: 2,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  {d.id === 'none' && <X className="w-3 h-3" style={{ color: C.faint }} />}
+                                </div>
+                              </div>
+                              <span className="text-[8px] font-semibold text-center leading-tight" style={{ color: avatarDecor === d.id ? '#fff' : C.muted }}>{d.name}</span>
+                              {d.premium && <Crown className="w-2.5 h-2.5" style={{ color: '#f0b232' }} />}
+                            </button>
                           ))}
                         </div>
                       </div>

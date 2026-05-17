@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, MeshDistortMaterial, Sphere, Stars } from "@react-three/drei";
 import * as THREE from "three";
-import gsap from "gsap";
 import {
   Crown, Zap, Brain, Sparkles, Rocket, ArrowRight, Check, X,
   Palette, Shield, Clock, Star, Infinity as InfinityIcon, MessageSquare, Eye,
@@ -14,28 +13,31 @@ import {
 /* ═══════════════════════════════════════════════════════
    3D GOLD PARTICLE FIELD
 ═══════════════════════════════════════════════════════ */
+const seededRandom = (seed) => {
+  const x = Math.sin(seed * 997.13) * 10000;
+  return x - Math.floor(x);
+};
+
 function GoldParticles({ count = 1500 }) {
   const mesh = useRef();
-  const [positions, colors, sizes] = useMemo(() => {
+  const [positions, colors] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
-    const sz = new Float32Array(count);
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      const r = Math.random() * 14 + 2;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
+      const r = seededRandom(i + 1) * 14 + 2;
+      const theta = seededRandom(i + 2) * Math.PI * 2;
+      const phi = Math.acos(2 * seededRandom(i + 3) - 1);
       pos[i3] = r * Math.sin(phi) * Math.cos(theta);
       pos[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       pos[i3 + 2] = r * Math.cos(phi);
-      const t = Math.random();
+      const t = seededRandom(i + 4);
       if (t < 0.35) { col[i3] = 1.0; col[i3+1] = 0.85; col[i3+2] = 0.3; }       // gold
       else if (t < 0.55) { col[i3] = 0.85; col[i3+1] = 0.65; col[i3+2] = 1.0; }  // purple
       else if (t < 0.75) { col[i3] = 1.0; col[i3+1] = 0.95; col[i3+2] = 0.85; }  // warm white
       else { col[i3] = 0.6; col[i3+1] = 0.4; col[i3+2] = 0.9; }                  // violet
-      sz[i] = Math.random() * 3 + 0.5;
     }
-    return [pos, col, sz];
+    return [pos, col];
   }, [count]);
 
   useFrame((s) => {

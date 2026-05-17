@@ -14,6 +14,10 @@ import NoodleXButton from '../components/NoodleXButton';
    ══════════════════════════════════════════════════════════════════ */
 const PATH_CONFIG = { easy: { route: '/hub/easy', label: 'Easy' }, medium: { route: '/hub/medium', label: 'Medium' }, hard: { route: '/hub/hard', label: 'Hard' } };
 const DEFAULT_PROFILE = { name: '', age: '', weight: '', height: '', goal: '', joinedDate: new Date().toISOString(), streak: 0, level: 'Wellness Seeker' };
+const seededRandom = (seed) => {
+  const x = Math.sin(seed * 997.13) * 10000;
+  return x - Math.floor(x);
+};
 
 const TIERS = [
   { key: 'easy', title: 'Beginner', tag: 'EASY', desc: 'Beginner AI coach that helps build consistency and learn fundamentals.', icon: <Shield size={20} strokeWidth={1.5} />, color: '#34d399', rgb: '52,211,153', grad: 'linear-gradient(135deg,#34d399,#059669)' },
@@ -112,12 +116,12 @@ function OrganicCanvas() {
 function FloatingBubbles() {
   const bubbles = useMemo(() => Array.from({ length: 22 }, (_, i) => ({
     id: i,
-    size: 4 + Math.random() * 14,
-    x: Math.random() * 100,
-    dur: 30 + Math.random() * 50,
-    delay: Math.random() * -60,
-    opacity: 0.03 + Math.random() * 0.06,
-    drift: (Math.random() - 0.5) * 20,
+    size: 4 + seededRandom(i + 1) * 14,
+    x: seededRandom(i + 11) * 100,
+    dur: 30 + seededRandom(i + 21) * 50,
+    delay: seededRandom(i + 31) * -60,
+    opacity: 0.03 + seededRandom(i + 41) * 0.06,
+    drift: (seededRandom(i + 51) - 0.5) * 20,
   })), []);
 
   return (
@@ -281,7 +285,6 @@ export default function NoodleHub() {
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [editProfile, setEditProfile] = useState(DEFAULT_PROFILE);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const { scrollYProgress } = useScroll();
@@ -295,7 +298,13 @@ export default function NoodleHub() {
   useEffect(() => {
     const loadProfile = () => {
       const su = localStorage.getItem('user'); let ud = null;
-      if (su) { try { ud = JSON.parse(su); } catch {} }
+      if (su) {
+        try {
+          ud = JSON.parse(su);
+        } catch {
+          // Ignore malformed cached profile data.
+        }
+      }
       if (ud) { if (ud.avatar) setProfilePhoto(ud.avatar); const p = { ...DEFAULT_PROFILE, name: ud.name||'', weight: ud.weight||'', height: ud.height||'', age: ud.age||'', goal: ud.goal||'', joinedDate: ud.joinedDate||DEFAULT_PROFILE.joinedDate }; setProfile(p); setEditProfile(p); }
     };
     loadProfile();
@@ -305,11 +314,11 @@ export default function NoodleHub() {
     return () => { document.removeEventListener('mousedown', hc); window.removeEventListener('noodle_profile_update', loadProfile); };
   }, []);
 
-  const saveProfile = p => { setProfile(p); setEditProfile(p); const su = localStorage.getItem('user'); let ud = {}; if (su) try { ud = JSON.parse(su); } catch {} localStorage.setItem('user', JSON.stringify({ ...ud, name: p.name, weight: p.weight, height: p.height, age: p.age, goal: p.goal, level: p.level })); };
-  const handleProfileSave = async () => { saveProfile(editProfile); setIsEditing(false); try { const su = localStorage.getItem('user'); let ud = {}; if (su) try { ud = JSON.parse(su); } catch {} const r = await fetch('http://localhost:5000/api/user/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: editProfile.name||'', avatar: ud.avatar||'', height: Number(editProfile.height), weight: Number(editProfile.weight), age: Number(editProfile.age), goal: editProfile.goal||'' }) }); const d = await r.json(); if (r.ok && d.user) { localStorage.setItem('user', JSON.stringify(d.user)); if (d.user.avatar) setProfilePhoto(d.user.avatar); } } catch (e) { console.error(e); } };
-  const handleAvatarSelect = async url => { setSelectedAvatar(url); setProfilePhoto(url); try { const r = await fetch('http://localhost:5000/api/user/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ avatar: url }) }); const d = await r.json(); if (r.ok) { const su = localStorage.getItem('user'); let ud = {}; if (su) try { ud = JSON.parse(su); } catch {} localStorage.setItem('user', JSON.stringify({ ...ud, avatar: url })); } } catch (e) { console.error(e); } };
+  const saveProfile = p => { setProfile(p); setEditProfile(p); const su = localStorage.getItem('user'); let ud = {}; if (su) try { ud = JSON.parse(su); } catch { /* Ignore malformed cached profile data. */ } localStorage.setItem('user', JSON.stringify({ ...ud, name: p.name, weight: p.weight, height: p.height, age: p.age, goal: p.goal, level: p.level })); };
+  const handleProfileSave = async () => { saveProfile(editProfile); setIsEditing(false); try { const su = localStorage.getItem('user'); let ud = {}; if (su) try { ud = JSON.parse(su); } catch { /* Ignore malformed cached profile data. */ } const r = await fetch('http://localhost:5000/api/user/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ name: editProfile.name||'', avatar: ud.avatar||'', height: Number(editProfile.height), weight: Number(editProfile.weight), age: Number(editProfile.age), goal: editProfile.goal||'' }) }); const d = await r.json(); if (r.ok && d.user) { localStorage.setItem('user', JSON.stringify(d.user)); if (d.user.avatar) setProfilePhoto(d.user.avatar); } } catch (e) { console.error(e); } };
+  const handleAvatarSelect = async url => { setProfilePhoto(url); try { const r = await fetch('http://localhost:5000/api/user/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ avatar: url }) }); if (r.ok) { const su = localStorage.getItem('user'); let ud = {}; if (su) try { ud = JSON.parse(su); } catch { /* Ignore malformed cached profile data. */ } localStorage.setItem('user', JSON.stringify({ ...ud, avatar: url })); } } catch (e) { console.error(e); } };
   const handleSelectPath = k => { if (transition) return; setTransition({ label: PATH_CONFIG[k].label }); setTimeout(() => navigate(PATH_CONFIG[k].route), 900); };
-  const daysSince = Math.max(1, Math.floor((Date.now() - new Date(profile.joinedDate).getTime()) / 86400000));
+  const daysSince = Math.max(1, Math.floor((new Date().getTime() - new Date(profile.joinedDate).getTime()) / 86400000));
 
   return (
     <div style={{ fontFamily: "'Inter',sans-serif", color: '#fff', background: '#05050a', minHeight: '100vh', overflowX: 'hidden', position: 'relative' }}>

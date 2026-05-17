@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -121,9 +121,6 @@ const WISHLIST_PLANS = {
 // ═══════════════════════════════════════════════════════
 
 const fadeIn = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } };
-const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
-const cardFade = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35, ease: 'easeOut' } };
-
 // Card defined OUTSIDE so React keeps a stable reference (prevents remounting)
 const GlassCard = ({ children, className = '', onClick }) => (
   <div className={`glass-card-m p-5 ${className}`} onClick={onClick}>{children}</div>
@@ -131,20 +128,15 @@ const GlassCard = ({ children, className = '', onClick }) => (
 
 export default function MediumDashboard() {
   const navigate = useNavigate();
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const dropdownRef = useRef(null);
   const chatEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
-  const [darkMode, setDarkMode] = useState(() => { const s = localStorage.getItem('noodle_dark_mode'); return s === null ? true : s === 'true'; });
+  const [darkMode] = useState(() => { const s = localStorage.getItem('noodle_dark_mode'); return s === null ? true : s === 'true'; });
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [editProfile, setEditProfile] = useState(DEFAULT_PROFILE);
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [activeSection, setActiveSection] = useState(null);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -152,11 +144,11 @@ export default function MediumDashboard() {
   const [chatMessages, setChatMessages] = useState([{ role: 'ai', text: "Welcome. I'm your Noodle Performance Coach — ask me anything about training, nutrition, or recovery." }]);
   const [chatInput, setChatInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [thinkingText, setThinkingText] = useState('');
   const [credits, setCredits] = useState({ used: 0, limit: 15, isPremium: false });
   const [chatHistory, setChatHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState(Date.now().toString());
   const [showChatSidebar, setShowChatSidebar] = useState(true);
-  const [chatFullscreen, setChatFullscreen] = useState(false);
 
   const [splitLevel, setSplitLevel] = useState('');
   const [activeDay, setActiveDay] = useState('monday');
@@ -164,8 +156,6 @@ export default function MediumDashboard() {
   const [dietGoal, setDietGoal] = useState('');
   const [symptoms, setSymptoms] = useState('');
   const [deficiencyResult, setDeficiencyResult] = useState(null);
-  const [busyMode, setBusyMode] = useState(false);
-  const [busyDuration, setBusyDuration] = useState('');
   const [oneRmWeight, setOneRmWeight] = useState('');
   const [oneRmReps, setOneRmReps] = useState('');
   const [oneRmResult, setOneRmResult] = useState(null);
@@ -187,7 +177,9 @@ export default function MediumDashboard() {
           setProfile({ name: ud.name || 'Athlete', level: ud.level || 'Gym Enthusiast', ...ud });
           setEditProfile({ name: ud.name || 'Athlete', level: ud.level || 'Gym Enthusiast', ...ud });
         }
-      } catch (err) {}
+      } catch {
+        // Ignore malformed cached profile data and continue with defaults.
+      }
       
       const ch = await loadChatHistory('medium');
       setChatHistory(ch);
@@ -196,13 +188,7 @@ export default function MediumDashboard() {
     window.addEventListener('storage', loadProfile);
     window.addEventListener('noodle_profile_update', loadProfile);
     
-    const hco = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowProfileDropdown(false); };
-    document.addEventListener('mousedown', hco);
-    const hm = (e) => { mouseRef.current = { x: e.clientX, y: e.clientY }; setMousePos({ x: e.clientX, y: e.clientY }); };
-    window.addEventListener('mousemove', hm);
     return () => { 
-      document.removeEventListener('mousedown', hco); 
-      window.removeEventListener('mousemove', hm); 
       window.removeEventListener('storage', loadProfile);
       window.removeEventListener('noodle_profile_update', loadProfile);
     };
@@ -212,6 +198,16 @@ export default function MediumDashboard() {
     const qi = setInterval(() => setQuoteIndex(i => (i + 1) % QUOTES.length), 7000);
     return () => clearInterval(qi);
   }, []);
+
+  useEffect(() => {
+    setProgress(0);
+    const startedAt = new Date().getTime();
+    const id = setInterval(() => {
+      const elapsed = new Date().getTime() - startedAt;
+      setProgress(Math.min((elapsed / 7000) * 100, 100));
+    }, 120);
+    return () => clearInterval(id);
+  }, [quoteIndex]);
 
   useEffect(() => { localStorage.setItem('noodle_dark_mode', darkMode.toString()); }, [darkMode]);
 
@@ -230,7 +226,9 @@ export default function MediumDashboard() {
     try {
       const res = await fetch('http://localhost:5000/api/ai/credits?tier=medium', { credentials: 'include' });
       if (res.ok) { const data = await res.json(); setCredits(data); }
-    } catch { }
+    } catch {
+      // Credits are optional for rendering the dashboard shell.
+    }
   };
   useEffect(() => { fetchCredits(); }, []);
   const limitReached = !credits.isPremium && credits.used >= credits.limit;
@@ -239,12 +237,14 @@ export default function MediumDashboard() {
     if (!userMsg?.trim() || aiLoading || limitReached) return;
     const newMsgs = [...chatMessages, { role: 'user', text: userMsg }];
     setChatMessages(newMsgs); setAiLoading(true);
+    abortControllerRef.current = new AbortController();
     try {
       const res = await fetch('http://localhost:5000/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ message: userMsg, tier: 'medium' }),
+        signal: abortControllerRef.current.signal
       });
       if (res.status === 403) {
         setChatMessages([...newMsgs, { role: 'ai', text: 'Daily message limit reached. Come back tomorrow or upgrade to Premium!' }]);
@@ -252,7 +252,7 @@ export default function MediumDashboard() {
       }
       if (!res.ok) {
         let errMessage = 'Sorry, something went wrong.';
-        try { const data = await res.json(); errMessage = data.message; } catch(e){}
+        try { const data = await res.json(); errMessage = data.message; } catch { /* Use fallback message when the API returns a non-JSON error. */ }
         setChatMessages([...newMsgs, { role: 'ai', text: errMessage }]);
         fetchCredits(); setAiLoading(false); return;
       }
@@ -260,19 +260,66 @@ export default function MediumDashboard() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let aiText = '';
+      let thinking = '';
+      let buffer = '';
       let isFirstChunk = true;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (isFirstChunk) { setAiLoading(false); isFirstChunk = false; }
-        aiText += decoder.decode(value, { stream: true });
-        setChatMessages([...newMsgs, { role: 'ai', text: aiText }]);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n');
+          buffer = parts.pop();
+
+          for (const line of parts) {
+              if (!line.trim()) continue;
+              try {
+                  const parsed = JSON.parse(line);
+                  if (parsed.type === 'thinking') {
+                      thinking += parsed.text;
+                      setThinkingText(thinking);
+                  } else if (parsed.type === 'answer') {
+                      if (thinking) {
+                          setThinkingText('');
+                          thinking = '';
+                      }
+                      if (isFirstChunk) { setAiLoading(false); isFirstChunk = false; }
+                      aiText += parsed.text;
+                      setChatMessages([...newMsgs, { role: 'ai', text: aiText }]);
+                  }
+              } catch {
+                // Ignore malformed stream fragments and keep reading.
+              }
+          }
+        }
+      } catch (streamErr) {
+        if (streamErr.name !== 'AbortError') throw streamErr;
       }
+      
+      setThinkingText('');
+      if (isFirstChunk) setAiLoading(false);
+      
+      const finalMsgs = [...newMsgs, { role: 'ai', text: aiText }];
+      const first = newMsgs.find(m => m.role === 'user');
+      const title = first ? first.text.slice(0, 30) + (first.text.length > 30 ? '...' : '') : 'Untitled';
+      const id = activeChatId || Date.now().toString();
+      const cd = { id, title, messages: finalMsgs, date: new Date().toISOString() };
+      setChatHistory(prev => [cd, ...prev.filter(c => c.id !== id)]);
+      saveChatSession('medium', id, cd);
       fetchCredits();
     } catch (err) {
-      setChatMessages([...newMsgs, { role: 'ai', text: 'Could not reach the AI server. Please try again later.' }]);
-      setAiLoading(false);
+      if (err.name === 'AbortError') {
+        const title = newMsgs[0] ? newMsgs[0].text.slice(0, 30) : 'Untitled';
+        const id = activeChatId || Date.now().toString();
+        const cd = { id, title, messages: newMsgs, date: new Date().toISOString() };
+        setChatHistory(prev => [cd, ...prev.filter(c => c.id !== id)]);
+        setAiLoading(false); setThinkingText(''); fetchCredits();
+      } else {
+        setChatMessages([...newMsgs, { role: 'ai', text: 'Could not reach the AI server. Please try again later.' }]);
+        setAiLoading(false); setThinkingText('');
+      }
     }
   };
   const saveCurrentChat = () => {
@@ -287,6 +334,7 @@ export default function MediumDashboard() {
   const startNewChat = () => { saveCurrentChat(); setChatMessages([{ role: 'ai', text: "Welcome. I'm your Noodle Performance Coach — ask me anything about training, nutrition, or recovery." }]); setActiveChatId(Date.now().toString()); };
   const loadChat = (ch) => { saveCurrentChat(); setChatMessages(ch.messages); setActiveChatId(ch.id); };
   const deleteChat = (id) => { setChatHistory(prev => prev.filter(c => c.id !== id)); deleteChatSession('medium', id); if (activeChatId === id) startNewChat(); };
+  const stopChat = () => { if (abortControllerRef.current) abortControllerRef.current.abort(); };
   const checkDeficiency = () => { if (!symptoms) return; const f = Object.entries(DEFICIENCY_MAP).filter(([k]) => symptoms.toLowerCase().includes(k)); setDeficiencyResult(f.length > 0 ? f : null); };
   const calc1RM = () => { const w = parseFloat(oneRmWeight), r = parseInt(oneRmReps); if (!w || !r || r < 1) return; setOneRmResult({ epley: Math.round(w * (1 + r / 30)), brzycki: Math.round(w * (36 / (37 - r))), weight: w, reps: r }); };
   const calcBMI = () => { if (profile.weight && profile.height) { const h = profile.height / 100; const v = (profile.weight / (h * h)).toFixed(1); setBmi({ value: v, category: v < 18.5 ? 'Underweight' : v < 25 ? 'Normal' : v < 30 ? 'Overweight' : 'Obese' }); } };
@@ -294,7 +342,7 @@ export default function MediumDashboard() {
   const saveProfile = (p) => { 
     setProfile(p); 
     setEditProfile(p); 
-    const su = localStorage.getItem('user'); let ud = {}; if(su) try{ud=JSON.parse(su);}catch{}
+    const su = localStorage.getItem('user'); let ud = {}; if(su) try{ud=JSON.parse(su);}catch{ /* Ignore malformed cached profile data. */ }
     const newUd = { ...ud, ...p };
     localStorage.setItem('user', JSON.stringify(newUd)); 
     window.dispatchEvent(new Event('noodle_profile_update'));
@@ -304,7 +352,7 @@ export default function MediumDashboard() {
     setProfilePhoto(url);
     const sp = localStorage.getItem('user');
     let ud = {};
-    if (sp) try { ud = JSON.parse(sp); } catch {}
+    if (sp) try { ud = JSON.parse(sp); } catch { /* Ignore malformed cached profile data. */ }
     ud.avatar = url;
     localStorage.setItem('user', JSON.stringify(ud));
     window.dispatchEvent(new Event('noodle_profile_update'));
@@ -320,9 +368,7 @@ export default function MediumDashboard() {
   const tm = 'text-slate-600';
   const gold = 'text-[#c9a96e]';
   const goldBg = 'bg-[#c9a96e]/8 border-[#c9a96e]/20';
-  const cb = 'bg-slate-900/50 border-slate-700/30';
   const ib = 'bg-slate-900/80 border-slate-700/50 text-white placeholder-slate-600';
-  const mb2 = 'bg-slate-900/95 border-slate-700/50';
 
   const sections = [
     { id: 'split', icon: <Dumbbell className="w-5 h-5" />, title: 'Workout Split', desc: 'PPL & Full Body', gradient: 'from-[#c9a96e] to-[#a8884d]' },
@@ -341,7 +387,7 @@ export default function MediumDashboard() {
   const timeStr = new Date().toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   if (activeSection === 'coach') {
-    return (<NoodleChat tier="medium" messages={chatMessages} onSend={sendChat} isLoading={aiLoading} onClose={() => setActiveSection(null)}
+    return (<NoodleChat tier="medium" messages={chatMessages} onSend={sendChat} onStop={stopChat} isLoading={aiLoading} thinkingText={thinkingText} onClose={() => setActiveSection(null)}
       userName={profile?.name || 'Athlete'} userAvatar={profilePhoto} creditInfo={credits} chatHistory={chatHistory}
       onNewChat={startNewChat} onLoadChat={loadChat} onDeleteChat={deleteChat} activeChatId={activeChatId} />);
   }

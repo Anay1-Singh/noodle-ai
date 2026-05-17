@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useInView } from "framer-motion";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, MeshDistortMaterial, Sphere, Stars } from "@react-three/drei";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -15,12 +15,16 @@ import {
 
 gsap.registerPlugin(ScrollTrigger);
 
+const seededRandom = (seed) => {
+  const x = Math.sin(seed * 997.13) * 10000;
+  return x - Math.floor(x);
+};
+
 /* ═══════════════════════════════════════════════════════
    3D PARTICLE FIELD — Floating particle galaxy
 ═══════════════════════════════════════════════════════ */
 function ParticleField({ count = 2000 }) {
   const mesh = useRef();
-  const { viewport } = useThree();
 
   const [positions, colors, sizes] = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -28,19 +32,19 @@ function ParticleField({ count = 2000 }) {
     const sz = new Float32Array(count);
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      const radius = Math.random() * 12 + 2;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
+      const radius = seededRandom(i + 1) * 12 + 2;
+      const theta = seededRandom(i + 2) * Math.PI * 2;
+      const phi = Math.acos(2 * seededRandom(i + 3) - 1);
       pos[i3] = radius * Math.sin(phi) * Math.cos(theta);
       pos[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
       pos[i3 + 2] = radius * Math.cos(phi);
       // Warm red/orange/white palette
-      const t = Math.random();
+      const t = seededRandom(i + 4);
       if (t < 0.3) { col[i3] = 0.95; col[i3 + 1] = 0.2; col[i3 + 2] = 0.15; }
       else if (t < 0.5) { col[i3] = 1.0; col[i3 + 1] = 0.5; col[i3 + 2] = 0.2; }
       else if (t < 0.7) { col[i3] = 1.0; col[i3 + 1] = 0.85; col[i3 + 2] = 0.7; }
       else { col[i3] = 0.6; col[i3 + 1] = 0.6; col[i3 + 2] = 0.7; }
-      sz[i] = Math.random() * 3 + 0.5;
+      sz[i] = seededRandom(i + 5) * 3 + 0.5;
     }
     return [pos, col, sz];
   }, [count]);
@@ -258,7 +262,6 @@ function Marquee({ items, speed = 30, reverse = false }) {
 function FeatureCard({ feature, index }) {
   const ref = useRef();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [hovering, setHovering] = useState(false);
 
   const handleMouse = (e) => {
     const rect = ref.current?.getBoundingClientRect();
@@ -271,11 +274,9 @@ function FeatureCard({ feature, index }) {
 
   return (
     <Reveal delay={index * 0.1}>
-      <motion.div
+        <motion.div
         ref={ref}
         onMouseMove={handleMouse}
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
         whileHover={{ y: -8, scale: 1.02 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         className="relative group cursor-default"

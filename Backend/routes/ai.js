@@ -106,33 +106,36 @@ router.post("/chat", auth, aiLimiter, async (req, res) => {
             
             if (user.goal) parts.push(`Their current fitness goal is ${user.goal}.`);
             if (tier) parts.push(`They are on the ${tier} training tier.`);
+            if (user.isPremium) parts.push(`They have a Premium membership.`);
+            if (user.wellnessData && user.wellnessData.streak) parts.push(`They currently have a ${user.wellnessData.streak}-day streak!`);
             
             if (parts.length > 0) userContext = parts.join(" ") + "\n\n";
         } catch (err) {}
 
         let systemPrompt = "";
 
-        const formatInstructions = "Format your responses exactly like this: write in short natural paragraphs, never more than 2-3 sentences per paragraph. Use a single line break between paragraphs. Only use bullet points if the user asks for a list or plan. Use emojis sparingly and only where they feel natural — not on every line. For casual messages like hi or thanks, reply in one sentence only. Match the length of your reply to the complexity of the question — simple question means short answer, detailed question means detailed answer but still broken into short paragraphs. Never use headers or bold text unless the user asks for a structured plan. Write like you are texting a friend who asked a fitness question — natural, warm, confident, no fluff.";
+        const rulesPrompt = "Do not show your thinking or reasoning process in your reply. Reply directly with the answer only. Never start a response with Hmm or internal thoughts.\n\n";
+        const formatInstructions = "Reply only to what was asked. Write in short natural conversational paragraphs of 2-3 sentences max. Use a single line break between paragraphs. No headers or bold text unless user asks for a structured plan. Casual messages get one sentence replies. Use emojis sparingly and only where they feel natural. Match reply length to question complexity.";
 
         // EASY
         if (tier === "easy") {
-            systemPrompt = userContext + `You are Noodle, a chill friendly fitness coach. Keep ALL replies short and conversational. For greetings like hi/hello reply in ONE sentence max with an emoji. Only give long detailed responses if the user explicitly asks for a plan, routine, or explanation. Never give unrequested lists, sections, or headers. Talk like a supportive friend who knows fitness. ${formatInstructions}`;
+            systemPrompt = rulesPrompt + userContext + `You are Noodle, a chill friendly fitness coach. Keep ALL replies short and conversational. For greetings like hi/hello reply in ONE sentence max with an emoji. Only give long detailed responses if the user explicitly asks for a plan, routine, or explanation. Never give unrequested lists, sections, or headers. Talk like a supportive friend who knows fitness. ${formatInstructions}`;
         }
 
         // MEDIUM
         else if (tier === "medium") {
-            systemPrompt = userContext + `You are Noodle, a direct gym coach focused on gains. Keep replies short and punchy. For greetings reply in one sentence with an emoji. Only go detailed when the user asks for something specific like a program or macro calculation. No unrequested bullet points or sections. Talk like a knowledgeable gym buddy. ${formatInstructions}`;
+            systemPrompt = rulesPrompt + userContext + `You are Noodle, a direct gym coach focused on gains. Keep replies short and punchy. For greetings reply in one sentence with an emoji. Only go detailed when the user asks for something specific like a program or macro calculation. No unrequested bullet points or sections. Talk like a knowledgeable gym buddy. ${formatInstructions}`;
         }
 
         // HARD
         else if (tier === "hard") {
-            systemPrompt = userContext + `You are Noodle, an elite competition coach. Replies are short and precise. Greetings get one sentence back. Only give full protocols when explicitly requested. No filler, no unrequested info. Every word counts. ${formatInstructions}`;
+            systemPrompt = rulesPrompt + userContext + `You are Noodle, an elite competition coach. Replies are short and precise. Greetings get one sentence back. Only give full protocols when explicitly requested. No filler, no unrequested info. Every word counts. ${formatInstructions}`;
         }
 
-        const openRouterMaxTokens = message.length < 30 ? 150 : 500;
+        const requestMaxTokens = message.length < 30 ? 150 : 500;
 
         const response = await fetch(
-            "https://openrouter.ai/api/v1/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",
             {
                 method: "POST",
                 headers: {
@@ -140,13 +143,16 @@ router.post("/chat", auth, aiLimiter, async (req, res) => {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: "meta-llama/llama-3-8b-instruct",
+                    model: "llama-3.3-70b-versatile",
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: message },
                     ],
-                    temperature: 0.7,
-                    max_tokens: openRouterMaxTokens,
+                    temperature: 1.0,
+                    top_p: 1.0,
+                    frequency_penalty: 0.0,
+                    presence_penalty: 0.0,
+                    max_tokens: requestMaxTokens,
                     stream: true,
                 }),
             }
@@ -155,7 +161,7 @@ router.post("/chat", auth, aiLimiter, async (req, res) => {
         if (!response.ok) {
             let errorData = {};
             try { errorData = await response.json(); } catch(e){}
-            console.error("OpenRouter Error:", errorData);
+            console.error("NVIDIA API Error:", errorData);
             
             // Refund token if error occurred
             if (tokenReserved) {
@@ -184,9 +190,14 @@ router.post("/chat", auth, aiLimiter, async (req, res) => {
                 if (line.startsWith("data: ")) {
                     try {
                         const parsed = JSON.parse(line.replace(/^data: /, ""));
-                        const content = parsed.choices?.[0]?.delta?.content;
-                        if (content) {
-                            res.write(content);
+                        const delta = parsed.choices?.[0]?.delta;
+                        if (!delta) continue;
+                        
+                        if (delta.reasoning_content) {
+                            res.write(JSON.stringify({ type: 'thinking', text: delta.reasoning_content }) + '\n');
+                        }
+                        if (delta.content) {
+                            res.write(JSON.stringify({ type: 'answer', text: delta.content }) + '\n');
                         }
                     } catch (e) {
                         // ignore partial chunk json errors

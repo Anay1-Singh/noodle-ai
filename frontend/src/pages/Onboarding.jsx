@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Shield, Check, ChevronRight } from "lucide-react";
+import NoodleXButton from "../components/NoodleXButton";
+
 const API = "http://localhost:5000/api/user";
 
 const avatars = Array.from(
@@ -34,7 +36,9 @@ export default function Onboarding() {
                 } else if (userData.name) {
                     setName(userData.name);
                 }
-            } catch { }
+            } catch {
+                // Ignore malformed cached user data and continue onboarding.
+            }
         }
     }, []);
 
@@ -65,7 +69,7 @@ export default function Onboarding() {
                     // Update only avatar in stored user
                     const storedUser = localStorage.getItem("user");
                     let userData = {};
-                    if (storedUser) try { userData = JSON.parse(storedUser); } catch { }
+                    if (storedUser) try { userData = JSON.parse(storedUser); } catch { /* Ignore malformed cached user data. */ }
                     userData.avatar = data.avatar;
                     localStorage.setItem("user", JSON.stringify(userData));
                     navigate("/hub");

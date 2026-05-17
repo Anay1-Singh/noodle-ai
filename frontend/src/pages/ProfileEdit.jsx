@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -112,7 +112,9 @@ export default function ProfileEdit() {
       // Fallback or process fetched data
       try {
         if (!u.name) u = JSON.parse(localStorage.getItem('user') || '{}');
-      } catch { }
+      } catch {
+        // Ignore malformed cached profile data and keep fetched/default values.
+      }
 
       setAvatar(u.avatar || null);
       setBannerColor(u.bannerColor || '#5865f2');
@@ -134,7 +136,7 @@ export default function ProfileEdit() {
 
   const previewAv = pendAvatar || avatar;
   const previewBn = pendBanner || bannerColor;
-  const daysSince = Math.max(1, Math.floor((Date.now() - new Date(joinedDate).getTime()) / 86400000));
+  const daysSince = Math.max(1, Math.floor((new Date().getTime() - new Date(joinedDate).getTime()) / 86400000));
 
   // Save
   const handleSave = async () => {
@@ -501,18 +503,33 @@ export default function ProfileEdit() {
                       }}>
                       {/* Animated thumbnail */}
                       <div className="w-full h-6 rounded-md overflow-hidden relative" style={{
-                        background: t.id === 'none' ? 'rgba(255,255,255,0.05)' :
-                          t.id === 'aurora' ? 'linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #7b2ff7)' :
-                            t.id === 'solar' ? 'linear-gradient(-45deg, #1a0000, #4a1500, #cc5500, #4a1500)' :
-                              t.id === 'cyber' ? '#000a00' :
-                                t.id === 'rosegold' ? 'linear-gradient(-45deg, #1a0a0f, #3d1f35, #4a2540)' :
-                                  t.id === 'ocean' ? 'linear-gradient(-45deg, #000814, #001d3d, #003566)' :
-                                    t.id === 'void' ? 'radial-gradient(ellipse, #0a0015, #000)' :
-                                      t.id === 'starfield' ? '#050510' :
-                                        'rgba(255,255,255,0.05)',
+                        background: {
+                          none: 'rgba(255,255,255,0.05)',
+                          aurora: 'linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #7b2ff7)',
+                          solar: 'linear-gradient(-45deg, #1a0000, #4a1500, #cc5500, #4a1500)',
+                          cyber: '#000a00',
+                          rosegold: 'linear-gradient(-45deg, #1a0a0f, #3d1f35, #4a2540)',
+                          ocean: 'linear-gradient(-45deg, #000814, #001d3d, #003566)',
+                          void: 'radial-gradient(ellipse, #0a0015, #000)',
+                          starfield: '#050510',
+                          lava: 'linear-gradient(-45deg, #1a0000, #5c1a00, #7a2e00, #3d0000)',
+                          matrix: '#000800',
+                          nebula: 'linear-gradient(-45deg, #0a001a, #150030, #1a0040)',
+                          thunder: 'linear-gradient(-45deg, #0c0c1d, #1a1a3e, #0d0d2b)',
+                          blossom: 'linear-gradient(-45deg, #1a0a10, #2a1520, #1f0f18)',
+                          crystal: 'linear-gradient(-45deg, #0a0a1a, #141430, #181840)',
+                          midnight: 'linear-gradient(to bottom, #060612, #0f0f25)',
+                        }[t.id] || 'rgba(255,255,255,0.05)',
                       }}>
                         {t.id === 'cyber' && <div style={{ position: 'absolute', inset: 0, opacity: 0.2, backgroundImage: 'linear-gradient(0deg, #00ff4120 1px, transparent 1px), linear-gradient(90deg, #00ff4120 1px, transparent 1px)', backgroundSize: '6px 6px' }} />}
+                        {t.id === 'matrix' && <div style={{ position: 'absolute', inset: 0, opacity: 0.15, backgroundImage: 'linear-gradient(0deg, #00ff4115 1px, transparent 1px), linear-gradient(90deg, #00ff4115 1px, transparent 1px)', backgroundSize: '5px 5px' }} />}
                         {t.id === 'starfield' && [0, 1, 2, 3, 4].map(i => <div key={i} style={{ position: 'absolute', width: 1.5, height: 1.5, borderRadius: '50%', background: '#fff', left: `${15 + i * 17}%`, top: `${20 + (i * 30) % 60}%`, opacity: 0.6 }} />)}
+                        {t.id === 'lava' && [0,1,2].map(i => <div key={i} style={{ position: 'absolute', width: 3, height: 2, borderRadius: '50%', background: ['#ef4444','#f97316','#fbbf24'][i], left: `${20+i*25}%`, bottom: '15%', opacity: 0.6 }} />)}
+                        {t.id === 'nebula' && [0,1,2].map(i => <div key={i} style={{ position: 'absolute', width: 8, height: 8, borderRadius: '50%', background: ['#8b5cf620','#d946ef18','#06b6d415'][i], left: `${10+i*30}%`, top: `${10+i*15}%`, filter: 'blur(2px)' }} />)}
+                        {t.id === 'blossom' && [0,1,2].map(i => <div key={i} style={{ position: 'absolute', width: 3, height: 3, borderRadius: '30% 70%', background: '#f472b625', left: `${15+i*30}%`, top: `${20+i*15}%`, transform: `rotate(${i*40}deg)` }} />)}
+                        {t.id === 'crystal' && [0,1,2].map(i => <div key={i} style={{ position: 'absolute', width: 2, height: 2, background: ['#c4b5fd','#67e8f9','#fff'][i], left: `${20+i*25}%`, top: `${25+i*10}%`, clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.5 }} />)}
+                        {t.id === 'midnight' && [0,1,2,3].map(i => <div key={i} style={{ position: 'absolute', width: 4+i%2*3, height: 4+i%2*3, borderRadius: '50%', background: ['#fbbf2420','#f472b618','#60a5fa15','#34d39912'][i], left: `${10+i*22}%`, top: `${15+i*12}%`, filter: 'blur(2px)' }} />)}
+                        {t.id === 'thunder' && <div style={{ position: 'absolute', width: 1, height: '60%', top: '20%', left: '50%', background: '#38bdf830', filter: 'blur(1px)' }} />}
                         {t.id === 'none' && <X className="absolute inset-0 m-auto w-2.5 h-2.5" style={{ color: 'rgba(255,255,255,0.1)' }} />}
                       </div>
                       <div className="flex items-center gap-1">
@@ -545,14 +562,22 @@ export default function ProfileEdit() {
                       }}>
                       <div className="relative w-8 h-8">
                         <div className="w-8 h-8 rounded-full" style={{
-                          background: d.id === 'none' ? 'rgba(255,255,255,0.05)' :
-                            d.id === 'rainbow' ? 'conic-gradient(#ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0088, #ff0000)' :
-                              d.id === 'cosmic' ? 'conic-gradient(#8b5cf6, #06b6d4, #d946ef, #8b5cf6)' :
-                                d.id === 'electric' ? 'radial-gradient(circle, #38bdf830, #38bdf8)' :
-                                  d.id === 'golden' ? 'linear-gradient(135deg, #b8860b, #ffd700, #fff8dc, #ffd700)' :
-                                    d.id === 'emerald' ? 'radial-gradient(circle, #22c55e30, #22c55e)' :
-                                      d.id === 'sakura' ? 'radial-gradient(circle, #ff69b430, #ff69b4)' :
-                                        'rgba(255,255,255,0.05)',
+                          background: {
+                            none: 'rgba(255,255,255,0.05)',
+                            rainbow: 'conic-gradient(#ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0088, #ff0000)',
+                            cosmic: 'conic-gradient(#8b5cf6, #06b6d4, #d946ef, #8b5cf6)',
+                            electric: 'radial-gradient(circle, #38bdf830, #38bdf8)',
+                            golden: 'linear-gradient(135deg, #b8860b, #ffd700, #fff8dc, #ffd700)',
+                            emerald: 'radial-gradient(circle, #22c55e30, #22c55e)',
+                            sakura: 'radial-gradient(circle, #ff69b430, #ff69b4)',
+                            inferno: 'conic-gradient(#ef4444, #f97316, #fbbf24, #f97316, #ef4444)',
+                            frost: 'linear-gradient(90deg, #164e63, #22d3ee, #a5f3fc, #ecfeff, #a5f3fc, #22d3ee, #164e63)',
+                            bloodmoon: 'conic-gradient(#7f1d1d, #dc2626, #991b1b, #450a0a, #7f1d1d)',
+                            glitch: 'linear-gradient(135deg, #22d3ee, #f43f5e, #a3e635, #c084fc)',
+                            arcane: 'conic-gradient(#a78bfa, #8b5cf6, #c4b5fd, #a78bfa)',
+                            supernova: 'radial-gradient(circle, #fcd34d, #f59e0b, #b45309)',
+                            shadowflame: 'radial-gradient(circle, #7c3aed50, #4c1d95, #1e1b4b)',
+                          }[d.id] || 'rgba(255,255,255,0.05)',
                           mask: d.id !== 'none' ? 'radial-gradient(farthest-side, transparent 60%, #000 60%)' : undefined,
                           WebkitMask: d.id !== 'none' ? 'radial-gradient(farthest-side, transparent 60%, #000 60%)' : undefined,
                         }} />
@@ -587,22 +612,32 @@ export default function ProfileEdit() {
                         cursor: 'pointer',
                       }}>
                       <div className="w-full h-5 rounded-md overflow-hidden relative" style={{
-                        background: e.id === 'none' ? 'rgba(255,255,255,0.05)' :
-                          e.id === 'aurora' ? 'linear-gradient(135deg, #06b6d430, #8b5cf640, #d946ef30)' :
-                            e.id === 'sparkle' ? 'rgba(255,255,255,0.05)' :
-                              e.id === 'wave' ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)' :
-                                e.id === 'prismatic' ? 'linear-gradient(90deg, #ff000020, #ffff0020, #00ff0020, #0088ff20, #8800ff20)' :
-                                  e.id === 'ember' ? 'linear-gradient(to top, #f9731620, transparent)' :
-                                    e.id === 'neon' ? 'rgba(255,255,255,0.03)' :
-                                      'rgba(255,255,255,0.05)',
+                        background: {
+                          none: 'rgba(255,255,255,0.05)',
+                          aurora: 'linear-gradient(135deg, #06b6d430, #8b5cf640, #d946ef30)',
+                          sparkle: 'rgba(255,255,255,0.05)',
+                          wave: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
+                          prismatic: 'linear-gradient(90deg, #ff000020, #ffff0020, #00ff0020, #0088ff20, #8800ff20)',
+                          ember: 'linear-gradient(to top, #f9731620, transparent)',
+                          neon: 'rgba(255,255,255,0.03)',
+                          confetti: 'rgba(255,255,255,0.05)',
+                          plasma: 'linear-gradient(90deg, #38bdf820, #8b5cf620, #d946ef20)',
+                          barglitch: 'linear-gradient(90deg, #f43f5e15, transparent, #22d3ee15)',
+                          matrix: 'linear-gradient(to bottom, #000, #00ff4110)',
+                          barfrost: 'linear-gradient(90deg, #22d3ee15, #a5f3fc20, #ecfeff15)',
+                          barlava: 'linear-gradient(90deg, #ef444420, #f9731625, #fbbf2420)',
+                          rainbowwave: 'linear-gradient(90deg, #ef444415, #f9731615, #fbbf2415, #22c55e15, #3b82f615, #8b5cf615)',
+                        }[e.id] || 'rgba(255,255,255,0.05)',
                       }}>
-                        {e.id === 'sparkle' && [0, 1, 2].map(i => (
-                          <div key={i} className="absolute w-1 h-1 rounded-full bg-white/50" style={{ left: `${20 + i * 25}%`, top: `${30 + (i % 2) * 30}%` }} />
-                        ))}
-                        {e.id === 'ember' && [0, 1].map(i => (
-                          <div key={i} className="absolute w-1 h-1 rounded-full" style={{ background: i % 2 ? '#fbbf24' : '#f97316', left: `${30 + i * 30}%`, bottom: '20%' }} />
-                        ))}
+                        {e.id === 'sparkle' && [0, 1, 2].map(i => <div key={i} className="absolute w-1 h-1 rounded-full bg-white/50" style={{ left: `${20 + i * 25}%`, top: `${30 + (i % 2) * 30}%` }} />)}
+                        {e.id === 'ember' && [0, 1].map(i => <div key={i} className="absolute w-1 h-1 rounded-full" style={{ background: i % 2 ? '#fbbf24' : '#f97316', left: `${30 + i * 30}%`, bottom: '20%' }} />)}
                         {e.id === 'neon' && <div className="absolute inset-0 rounded-md" style={{ boxShadow: 'inset 0 0 6px #5865f250' }} />}
+                        {e.id === 'confetti' && [0,1,2].map(i => <div key={i} className="absolute w-1.5 h-1" style={{ background: ['#f43f5e','#fbbf24','#34d399'][i], left: `${20+i*25}%`, top: '40%', transform: `rotate(${i*30}deg)` }} />)}
+                        {e.id === 'plasma' && <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)' }} />}
+                        {e.id === 'barglitch' && <div className="absolute w-full h-[1px] bg-white/20 top-1/2" />}
+                        {e.id === 'matrix' && [0,1,2].map(i => <div key={i} className="absolute w-[1px] h-3" style={{ background: '#00ff4150', left: `${25+i*25}%`, top: '10%' }} />)}
+                        {e.id === 'barfrost' && [0,1,2].map(i => <div key={i} className="absolute w-[2px] h-[2px] rounded-full bg-[#ecfeff]" style={{ left: `${20+i*25}%`, top: '40%' }} />)}
+                        {e.id === 'barlava' && [0,1].map(i => <div key={i} className="absolute w-2 h-1.5 rounded-full" style={{ background: ['#ef4444','#fbbf24'][i], left: `${30+i*30}%`, bottom: '10%', filter: 'blur(1px)' }} />)}
                         {e.id === 'none' && <X className="absolute inset-0 m-auto w-2.5 h-2.5" style={{ color: 'rgba(255,255,255,0.1)' }} />}
                       </div>
                       <div className="flex items-center gap-1">

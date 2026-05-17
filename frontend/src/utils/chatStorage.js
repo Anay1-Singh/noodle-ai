@@ -1,14 +1,13 @@
 export const loadChatHistory = async (tierFilter) => {
   try {
-    const token = localStorage.getItem("noodle_token");
-    if (!token) return [];
-
     const res = await fetch("http://localhost:5000/api/chat/history", {
-      headers: { Authorization: `Bearer ${token}` },
       credentials: "include"
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error("loadChatHistory: server returned", res.status);
+      return [];
+    }
     
     const data = await res.json();
     const arr = Array.isArray(data) ? data : [];
@@ -21,21 +20,21 @@ export const loadChatHistory = async (tierFilter) => {
 
 export const saveChatSession = async (tier, chatId, chatData) => {
   try {
-    const token = localStorage.getItem("noodle_token");
-    if (!token) return;
-
     // Build the finalized chat object matching the MongoDB schema exactly:
     const finalizedChat = { ...chatData, tier, id: chatId };
 
-    await fetch("http://localhost:5000/api/chat/save", {
+    const res = await fetch("http://localhost:5000/api/chat/save", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       credentials: "include",
       body: JSON.stringify(finalizedChat)
     });
+
+    if (!res.ok) {
+      console.error("saveChatSession: server returned", res.status, await res.text());
+    }
   } catch (err) {
     console.error("Failed to save chat session:", err);
   }
@@ -43,14 +42,14 @@ export const saveChatSession = async (tier, chatId, chatData) => {
 
 export const deleteChatSession = async (tier, chatId) => {
   try {
-    const token = localStorage.getItem("noodle_token");
-    if (!token) return;
-
-    await fetch(`http://localhost:5000/api/chat/${chatId}`, {
+    const res = await fetch(`http://localhost:5000/api/chat/${chatId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
       credentials: "include"
     });
+
+    if (!res.ok) {
+      console.error("deleteChatSession: server returned", res.status);
+    }
   } catch (err) {
     console.error("Failed to delete chat session:", err);
   }

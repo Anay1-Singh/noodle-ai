@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Settings, Flame, User, GripHorizontal } from 'lucide-react';
+
+/* eslint-disable react-refresh/only-export-components */
 
 /* ══════════════════════════════════════════════════════════
    ANIMATED BANNER THEMES — Premium ✦
@@ -16,6 +18,13 @@ export const BANNER_THEMES = [
   { id: 'ocean',     name: 'Deep Ocean',       desc: 'Dark blue/teal waves',       premium: true },
   { id: 'void',      name: 'Void',             desc: 'Dark pulsing abyss',         premium: true },
   { id: 'starfield', name: 'Starfield',        desc: 'Twinkling stars',            premium: true },
+  { id: 'lava',      name: 'Lava Flow',        desc: 'Molten magma river',         premium: true },
+  { id: 'matrix',    name: 'Digital Rain',     desc: 'Green code cascade',         premium: true },
+  { id: 'nebula',    name: 'Nebula',           desc: 'Cosmic dust clouds',         premium: true },
+  { id: 'thunder',   name: 'Thunderstorm',     desc: 'Electric storm flashes',     premium: true },
+  { id: 'blossom',   name: 'Sakura Bloom',     desc: 'Falling cherry petals',      premium: true },
+  { id: 'crystal',   name: 'Crystal Cave',     desc: 'Sparkling gem refractions',  premium: true },
+  { id: 'midnight',  name: 'Midnight City',    desc: 'City lights bokeh',          premium: true },
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -23,13 +32,20 @@ export const BANNER_THEMES = [
    Animated rings / borders around the avatar
    ══════════════════════════════════════════════════════════ */
 export const AVATAR_DECORATIONS = [
-  { id: 'none',     name: 'None',          desc: 'No decoration',           premium: false },
-  { id: 'rainbow',  name: 'Rainbow Ring',  desc: 'Spinning prismatic ring', premium: true },
-  { id: 'cosmic',   name: 'Cosmic Pulse',  desc: 'Pulsing cosmic glow',    premium: true },
-  { id: 'electric', name: 'Electric Arc',  desc: 'Flickering electric',     premium: true },
-  { id: 'golden',   name: 'Golden Aura',   desc: 'Shimmering gold ring',   premium: true },
-  { id: 'emerald',  name: 'Emerald Flame', desc: 'Green fire ring',        premium: true },
-  { id: 'sakura',   name: 'Sakura',        desc: 'Cherry blossom pink',    premium: true },
+  { id: 'none',       name: 'None',          desc: 'No decoration',             premium: false },
+  { id: 'rainbow',    name: 'Rainbow Ring',  desc: 'Spinning prismatic ring',   premium: true },
+  { id: 'cosmic',     name: 'Cosmic Pulse',  desc: 'Pulsing cosmic glow',       premium: true },
+  { id: 'electric',   name: 'Electric Arc',  desc: 'Flickering electric',        premium: true },
+  { id: 'golden',     name: 'Golden Aura',   desc: 'Shimmering gold ring',      premium: true },
+  { id: 'emerald',    name: 'Emerald Flame', desc: 'Green fire ring',           premium: true },
+  { id: 'sakura',     name: 'Sakura',        desc: 'Cherry blossom pink',       premium: true },
+  { id: 'inferno',    name: 'Inferno',       desc: 'Blazing fire vortex',       premium: true },
+  { id: 'frost',      name: 'Frost Crown',   desc: 'Icy crystalline halo',      premium: true },
+  { id: 'bloodmoon',  name: 'Blood Moon',    desc: 'Dark crimson eclipse',      premium: true },
+  { id: 'glitch',     name: 'Glitch',        desc: 'Digital distortion',        premium: true },
+  { id: 'arcane',     name: 'Arcane Sigil',  desc: 'Mystic rune circle',        premium: true },
+  { id: 'supernova',  name: 'Supernova',     desc: 'Exploding star burst',      premium: true },
+  { id: 'shadowflame',name: 'Shadowflame',   desc: 'Dark purple fire aura',     premium: true },
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -44,11 +60,50 @@ export const BAR_EFFECTS = [
   { id: 'prismatic', name: 'Prismatic',   desc: 'Color-shifting',        premium: true },
   { id: 'ember',     name: 'Ember',       desc: 'Fire particles',        premium: true },
   { id: 'neon',      name: 'Neon Glow',   desc: 'Pulsing neon border',   premium: true },
+  { id: 'confetti',  name: 'Confetti',    desc: 'Party sparkles',        premium: true },
+  { id: 'plasma',    name: 'Plasma',      desc: 'Electric plasma arcs',  premium: true },
+  { id: 'barglitch', name: 'Glitch',      desc: 'Digital distortion',    premium: true },
+  { id: 'matrix',    name: 'Matrix Rain', desc: 'Green code rain',       premium: true },
+  { id: 'barfrost',  name: 'Frost',       desc: 'Ice crystal shimmer',   premium: true },
+  { id: 'barlava',   name: 'Lava',        desc: 'Molten flow effect',    premium: true },
+  { id: 'rainbowwave', name: 'Rainbow Wave', desc: 'Prismatic sweep',    premium: true },
 ];
 
 /* ══════════════════════════════════════════════════════════
    CSS KEYFRAMES
    ══════════════════════════════════════════════════════════ */
+const seededRandom = (seed) => {
+  const x = Math.sin(seed * 997.13) * 10000;
+  return x - Math.floor(x);
+};
+
+const readProfileBarUser = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    return {
+      name: u.name || 'User',
+      bio: u.bio || '',
+      bannerColor: u.bannerColor || '#5865f2',
+      avatar: u.avatar || null,
+      streak: u.streak || 0,
+      avatarDecoration: u.avatarDecoration || 'none',
+      barEffect: u.barEffect || 'none',
+      bannerTheme: u.bannerTheme || 'none',
+    };
+  } catch {
+    return {
+      name: 'User',
+      bio: '',
+      bannerColor: '#5865f2',
+      avatar: null,
+      streak: 0,
+      avatarDecoration: 'none',
+      barEffect: 'none',
+      bannerTheme: 'none',
+    };
+  }
+};
+
 const EFFECT_STYLES = `
 /* Avatar decorations */
 @keyframes noodle-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -60,6 +115,16 @@ const EFFECT_STYLES = `
 @keyframes noodle-orbit { 0% { transform: rotate(0deg) translateX(22px) rotate(0deg); } 100% { transform: rotate(360deg) translateX(22px) rotate(-360deg); } }
 @keyframes noodle-orbit-reverse { 0% { transform: rotate(0deg) translateX(20px) rotate(0deg); } 100% { transform: rotate(-360deg) translateX(20px) rotate(360deg); } }
 @keyframes noodle-flicker { 0%, 100% { opacity: 0.3; } 20% { opacity: 1; } 40% { opacity: 0.5; } 60% { opacity: 0.9; } 80% { opacity: 0.2; } }
+@keyframes noodle-inferno { 0%, 100% { box-shadow: 0 0 10px #ef4444, 0 0 20px #f97316a0, 0 0 35px #ef444440; } 50% { box-shadow: 0 0 15px #ef4444, 0 0 30px #f97316c0, 0 0 50px #ef444460, 0 0 70px #fbbf2430; } }
+@keyframes noodle-frost-shimmer { 0% { background-position: -200% 0; filter: brightness(1); } 50% { filter: brightness(1.3); } 100% { background-position: 200% 0; filter: brightness(1); } }
+@keyframes noodle-bloodmoon { 0%, 100% { box-shadow: 0 0 10px #dc262680, 0 0 25px #7f1d1d50; filter: brightness(1); } 50% { box-shadow: 0 0 18px #dc2626a0, 0 0 40px #7f1d1d70, 0 0 60px #45000040; filter: brightness(1.1); } }
+@keyframes noodle-glitch-shift { 0% { transform: translate(0,0); } 20% { transform: translate(-2px,1px); } 40% { transform: translate(2px,-1px); } 60% { transform: translate(-1px,-2px); } 80% { transform: translate(1px,2px); } 100% { transform: translate(0,0); } }
+@keyframes noodle-glitch-color { 0%, 100% { border-color: #22d3ee; } 25% { border-color: #f43f5e; } 50% { border-color: #a3e635; } 75% { border-color: #c084fc; } }
+@keyframes noodle-arcane-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes noodle-arcane-pulse { 0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 3px #a78bfa); } 50% { opacity: 0.9; filter: drop-shadow(0 0 8px #a78bfa); } }
+@keyframes noodle-supernova-burst { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes noodle-supernova-rays { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes noodle-shadowflame { 0%, 100% { box-shadow: 0 0 10px #7c3aed80, 0 0 20px #1e1b4b60; } 50% { box-shadow: 0 0 18px #7c3aeda0, 0 0 35px #1e1b4b80, 0 0 55px #7c3aed30; } }
 
 /* Bar effects */
 @keyframes noodle-aurora-bar { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -79,7 +144,7 @@ const EFFECT_STYLES = `
 /* ══════════════════════════════════════════════════════════
    ANIMATED BANNER — Replaces solid gradient bg
    ══════════════════════════════════════════════════════════ */
-export function AnimatedBanner({ theme, bannerColor, className = '', style = {} }) {
+export function AnimatedBanner({ theme, className = '', style = {} }) {
   if (!theme || theme === 'none') return null;
 
   const base = {
@@ -285,7 +350,7 @@ export function AnimatedBanner({ theme, bannerColor, className = '', style = {} 
           }} />
           {/* Stars */}
           {Array.from({ length: 20 }).map((_, i) => {
-            const size = 1 + Math.random() * 2;
+            const size = 1 + seededRandom(i + 1) * 2;
             return (
               <div key={i} style={{
                 position: 'absolute',
@@ -299,6 +364,88 @@ export function AnimatedBanner({ theme, bannerColor, className = '', style = {} 
               }} />
             );
           })}
+        </div>
+      );
+
+    case 'lava':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(-45deg, #1a0000, #3d0000, #5c1a00, #7a2e00, #5c1a00, #3d0000, #1a0000)', backgroundSize: '400% 400%', animation: 'noodle-banner-flow 5s ease infinite' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: '-20%', right: '-20%', height: '50%', borderRadius: '40%', background: 'rgba(239,68,68,0.12)', animation: 'noodle-wave-drift 4s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', bottom: '-5%', left: '-10%', right: '-10%', height: '40%', borderRadius: '45%', background: 'rgba(249,115,22,0.08)', animation: 'noodle-wave-drift 3s ease-in-out 0.5s infinite', animationDirection: 'reverse' }} />
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: i%2===0?3:2, height: i%2===0?3:2, borderRadius: '50%', background: i%3===0?'#ef4444':i%3===1?'#f97316':'#fbbf24', left: `${3+i*10}%`, bottom: '5%', animation: `noodle-float ${1+i%4*0.3}s ease-out ${i*0.2}s infinite`, opacity: 0 }} />
+          ))}
+        </div>
+      );
+
+    case 'matrix':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: '#000800' }} />
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.1, backgroundImage: 'linear-gradient(0deg, #00ff4115 1px, transparent 1px), linear-gradient(90deg, #00ff4115 1px, transparent 1px)', backgroundSize: '8px 8px' }} />
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: 2, height: 8+i%5*4, background: `linear-gradient(to bottom, transparent, #00ff41${30+i%4*15})`, left: `${(i*7+3)%95}%`, top: '-10%', animation: `noodle-grid-scan ${1.5+i%5*0.5}s linear ${(i*0.3)%2}s infinite`, opacity: 0.6+i%3*0.15 }} />
+          ))}
+          <div style={{ position: 'absolute', width: '50%', height: '150%', top: '-30%', left: '25%', borderRadius: '50%', background: 'radial-gradient(circle, #00ff4108, transparent 60%)', animation: 'noodle-void-breathe 5s ease infinite' }} />
+        </div>
+      );
+
+    case 'nebula':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(-45deg, #0a001a, #150030, #1a0040, #100025, #0a001a)', backgroundSize: '400% 400%', animation: 'noodle-banner-flow 10s ease infinite' }} />
+          <div style={{ position: 'absolute', width: '70%', height: '200%', top: '-50%', left: '10%', borderRadius: '50%', background: 'radial-gradient(ellipse, #8b5cf620, #d946ef10, transparent 60%)', animation: 'noodle-void-breathe 7s ease infinite' }} />
+          <div style={{ position: 'absolute', width: '50%', height: '180%', top: '-40%', right: '5%', borderRadius: '50%', background: 'radial-gradient(ellipse, #06b6d415, #3b82f610, transparent 60%)', animation: 'noodle-void-breathe 9s ease 3s infinite' }} />
+          {Array.from({ length: 12 }).map((_, i) => {
+            const s = 1 + (i%3)*0.5;
+            return (<div key={i} style={{ position: 'absolute', width: s, height: s, borderRadius: '50%', background: i%4===0?'#c084fc':i%4===1?'#818cf8':i%4===2?'#22d3ee':'#f0abfc', left: `${(i*29+5)%92}%`, top: `${(i*31+11)%85}%`, animation: `noodle-star-twinkle ${2+i%4*0.5}s ease ${i*0.4%3}s infinite` }} />);
+          })}
+        </div>
+      );
+
+    case 'thunder':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(-45deg, #0c0c1d, #1a1a3e, #0d0d2b, #15153a, #0c0c1d)', backgroundSize: '400% 400%', animation: 'noodle-banner-flow 6s ease infinite' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(56,189,248,0.04) 50%, transparent 60%)', animation: 'noodle-banner-pulse 2s ease infinite' }} />
+          {[0,1,2].map(i => (
+            <div key={i} style={{ position: 'absolute', width: 1, height: '70%', top: '15%', left: `${20+i*30}%`, background: `linear-gradient(to bottom, transparent, #38bdf8${40+i*20}, transparent)`, animation: `noodle-flicker ${0.5+i*0.3}s ease ${i*0.8}s infinite`, filter: `blur(${1+i}px)` }} />
+          ))}
+          <div style={{ position: 'absolute', bottom: 0, left: '-20%', right: '-20%', height: '35%', borderRadius: '40%', background: 'rgba(100,116,139,0.1)', animation: 'noodle-wave-drift 6s ease infinite' }} />
+        </div>
+      );
+
+    case 'blossom':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(-45deg, #1a0a10, #2a1520, #1f0f18, #2a1520, #1a0a10)', backgroundSize: '400% 400%', animation: 'noodle-banner-flow 8s ease infinite' }} />
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: 4+i%3*2, height: 4+i%3*2, borderRadius: i%2===0?'50%':'30% 70% 70% 30%', background: i%3===0?'#f472b618':i%3===1?'#fda4af15':'#fecdd312', left: `${(i*23+5)%90}%`, top: `-5%`, animation: `noodle-float ${2.5+i%4*0.5}s ease-in-out ${i*0.4}s infinite`, animationDirection: 'reverse', transform: `rotate(${i*30}deg)`, opacity: 0 }} />
+          ))}
+          <div style={{ position: 'absolute', width: '60%', height: '150%', top: '-30%', left: '20%', borderRadius: '50%', background: 'radial-gradient(circle, #f472b60a, transparent 60%)', animation: 'noodle-void-breathe 6s ease infinite' }} />
+        </div>
+      );
+
+    case 'crystal':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(-45deg, #0a0a1a, #141430, #0d0d25, #181840, #0a0a1a)', backgroundSize: '400% 400%', animation: 'noodle-banner-flow 7s ease infinite' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(60deg, transparent 30%, #818cf810 40%, transparent 45%, #22d3ee08 55%, transparent 60%)', backgroundSize: '200% 200%', animation: 'noodle-shimmer 4s linear infinite' }} />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: 2+i%3, height: 2+i%3, background: i%3===0?'#c4b5fd':i%3===1?'#67e8f9':'#fff', left: `${(i*31+7)%90}%`, top: `${(i*23+15)%80}%`, animation: `noodle-star-twinkle ${1.5+i%3*0.8}s ease ${i*0.5%2.5}s infinite`, clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)', transform: `scale(${0.6+i%3*0.3})` }} />
+          ))}
+        </div>
+      );
+
+    case 'midnight':
+      return (
+        <div className={className} style={base}>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, #060612, #0f0f25, #0a0a18)' }} />
+          {Array.from({ length: 16 }).map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: 3+i%4*2, height: 3+i%4*2, borderRadius: '50%', background: i%4===0?'#fbbf2415':i%4===1?'#f472b612':i%4===2?'#60a5fa10':'#34d39910', left: `${(i*19+5)%88}%`, top: `${(i*29+10)%75}%`, filter: `blur(${2+i%3*2}px)`, animation: `noodle-star-twinkle ${2+i%3}s ease ${i*0.4%3}s infinite` }} />
+          ))}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%', background: 'linear-gradient(to top, rgba(15,15,37,0.9), transparent)' }} />
         </div>
       );
 
@@ -483,13 +630,11 @@ export function AvatarRing({ decoration, size = 36 }) {
             border: '2px solid #f472b6',
             animation: 'noodle-sakura-glow 2s ease-in-out infinite',
           }} />
-          {/* Petal-like outer glow */}
           <div style={{
             position: 'absolute', inset: -4, borderRadius: '50%',
             background: 'radial-gradient(circle, #f472b612, transparent 60%)',
             animation: 'noodle-pulse 2.5s ease-in-out infinite',
           }} />
-          {/* Floating petal particles */}
           {[0, 1].map(i => (
             <div key={i} style={{
               position: 'absolute', left: '50%', top: '50%',
@@ -497,6 +642,312 @@ export function AvatarRing({ decoration, size = 36 }) {
               borderRadius: '50%', background: i === 0 ? '#f472b6' : '#fda4af',
               animation: `${i === 0 ? 'noodle-orbit' : 'noodle-orbit-reverse'} ${3.5 + i}s linear ${i * 0.8}s infinite`,
               boxShadow: `0 0 3px ${i === 0 ? '#f472b6' : '#fda4af'}`,
+            }} />
+          ))}
+        </div>
+      );
+
+    /* ═══════ NEW PREMIUM DECORATIONS ═══════ */
+
+    case 'inferno':
+      return (
+        <div style={{ ...base }}>
+          {/* Main fire ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: 'conic-gradient(#ef4444, #f97316, #fbbf24, #f97316, #ef4444, #dc2626, #ef4444)',
+            animation: 'noodle-spin 2s linear infinite',
+            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+          }} />
+          {/* Outer heat glow */}
+          <div style={{
+            position: 'absolute', inset: -5, borderRadius: '50%',
+            animation: 'noodle-inferno 1.5s ease-in-out infinite',
+          }} />
+          {/* Rising flame particles */}
+          {[0, 1, 2, 3, 4].map(i => (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${15 + i * 18}%`, bottom: -2,
+              width: i % 2 === 0 ? 4 : 3, height: i % 2 === 0 ? 4 : 3,
+              borderRadius: '50%',
+              background: ['#ef4444', '#f97316', '#fbbf24', '#ef4444', '#f97316'][i],
+              animation: `noodle-float ${0.8 + i * 0.25}s ease-out ${i * 0.15}s infinite`,
+              opacity: 0, filter: 'blur(0.5px)',
+              boxShadow: `0 0 4px ${['#ef4444', '#f97316', '#fbbf24', '#ef4444', '#f97316'][i]}`,
+            }} />
+          ))}
+          {/* Counter-rotating inner embers */}
+          {[0, 1, 2].map(i => (
+            <div key={`e${i}`} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 2.5, height: 2.5, marginLeft: -1.25, marginTop: -1.25,
+              borderRadius: '50%', background: '#fbbf24',
+              animation: `noodle-orbit-reverse ${1.5 + i * 0.6}s linear ${i * 0.3}s infinite`,
+              boxShadow: '0 0 5px #fbbf24',
+            }} />
+          ))}
+        </div>
+      );
+
+    case 'frost':
+      return (
+        <div style={{ ...base }}>
+          {/* Icy shimmer ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: 'linear-gradient(90deg, #164e63, #22d3ee, #a5f3fc, #ecfeff, #a5f3fc, #22d3ee, #164e63)',
+            backgroundSize: '200% 100%',
+            animation: 'noodle-frost-shimmer 3s linear infinite',
+            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+          }} />
+          {/* Frost crystalline outer glow */}
+          <div style={{
+            position: 'absolute', inset: -4, borderRadius: '50%',
+            background: 'radial-gradient(circle, #22d3ee18, transparent 60%)',
+            animation: 'noodle-pulse 3s ease-in-out infinite',
+          }} />
+          {/* Orbiting ice shards */}
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 3, height: 6, marginLeft: -1.5, marginTop: -3,
+              borderRadius: '1px',
+              background: i % 2 === 0 ? '#a5f3fc' : '#67e8f9',
+              animation: `noodle-orbit ${3 + i * 0.8}s linear ${i * 0.5}s infinite`,
+              boxShadow: `0 0 4px ${i % 2 === 0 ? '#a5f3fc' : '#67e8f9'}`,
+              transform: `rotate(${i * 45}deg)`,
+            }} />
+          ))}
+          {/* Snowflake particles */}
+          {[0, 1, 2].map(i => (
+            <div key={`s${i}`} style={{
+              position: 'absolute',
+              left: `${20 + i * 30}%`, top: -2,
+              width: 2, height: 2, borderRadius: '50%', background: '#ecfeff',
+              animation: `noodle-float ${1.5 + i * 0.4}s ease-out ${i * 0.4}s infinite`,
+              opacity: 0, animationDirection: 'reverse',
+            }} />
+          ))}
+        </div>
+      );
+
+    case 'bloodmoon':
+      return (
+        <div style={{ ...base }}>
+          {/* Dark crimson spinning ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: 'conic-gradient(#7f1d1d, #dc2626, #991b1b, #450a0a, #7f1d1d, #dc2626, #7f1d1d)',
+            animation: 'noodle-spin 5s linear infinite',
+            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+          }} />
+          {/* Blood moon glow */}
+          <div style={{
+            position: 'absolute', inset: -6, borderRadius: '50%',
+            animation: 'noodle-bloodmoon 3s ease-in-out infinite',
+          }} />
+          {/* Eclipse corona particles */}
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 3, height: 3, marginLeft: -1.5, marginTop: -1.5,
+              borderRadius: '50%', background: '#dc2626',
+              animation: `noodle-orbit ${4 + i}s linear ${i * 1.2}s infinite`,
+              boxShadow: '0 0 6px #dc2626, 0 0 12px #7f1d1d',
+            }} />
+          ))}
+          {/* Inner dark haze */}
+          <div style={{
+            position: 'absolute', inset: 2, borderRadius: '50%',
+            background: 'radial-gradient(circle, #45000030, transparent 70%)',
+            animation: 'noodle-pulse 4s ease-in-out infinite',
+          }} />
+        </div>
+      );
+
+    case 'glitch':
+      return (
+        <div style={{ ...base }}>
+          {/* Main glitchy border */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            border: '2px solid #22d3ee',
+            animation: 'noodle-glitch-color 0.8s steps(4) infinite, noodle-glitch-shift 0.3s steps(3) infinite',
+          }} />
+          {/* RGB split layers */}
+          <div style={{
+            position: 'absolute', inset: -1, borderRadius: '50%',
+            border: '1px solid #f43f5e40',
+            animation: 'noodle-glitch-shift 0.4s steps(5) 0.1s infinite',
+            filter: 'blur(0.5px)',
+          }} />
+          <div style={{
+            position: 'absolute', inset: -2, borderRadius: '50%',
+            border: '1px solid #a3e63530',
+            animation: 'noodle-glitch-shift 0.35s steps(4) 0.2s infinite',
+            filter: 'blur(1px)',
+          }} />
+          {/* Scan line */}
+          <div style={{
+            position: 'absolute', left: -pad, right: -pad, height: 2,
+            background: 'linear-gradient(90deg, transparent, #22d3ee80, transparent)',
+            animation: 'noodle-grid-scan 1.5s linear infinite',
+            filter: 'blur(0.5px)',
+          }} />
+          {/* Data particles */}
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: 2, height: 2, borderRadius: '1px',
+              background: ['#22d3ee', '#f43f5e', '#a3e635', '#c084fc'][i],
+              left: `${10 + i * 25}%`, bottom: 0,
+              animation: `noodle-float ${0.6 + i * 0.15}s linear ${i * 0.1}s infinite`,
+              opacity: 0,
+            }} />
+          ))}
+        </div>
+      );
+
+    case 'arcane':
+      return (
+        <div style={{ ...base }}>
+          {/* Outer mystic ring — slow spin */}
+          <div style={{
+            position: 'absolute', inset: -2, borderRadius: '50%',
+            border: '1px solid #a78bfa40',
+            animation: 'noodle-arcane-spin 8s linear infinite',
+          }}>
+            {/* Rune marks on the outer ring */}
+            {[0, 60, 120, 180, 240, 300].map(deg => (
+              <div key={deg} style={{
+                position: 'absolute', left: '50%', top: '50%',
+                width: 4, height: 4, marginLeft: -2, marginTop: -2,
+                borderRadius: '1px',
+                background: '#a78bfa',
+                transform: `rotate(${deg}deg) translateY(-${(outer / 2) + 1}px)`,
+                boxShadow: '0 0 3px #a78bfa',
+                animation: 'noodle-arcane-pulse 2s ease-in-out infinite',
+                animationDelay: `${deg / 360}s`,
+              }} />
+            ))}
+          </div>
+          {/* Inner ring — reverse spin */}
+          <div style={{
+            position: 'absolute', inset: 1, borderRadius: '50%',
+            border: '1.5px dashed #a78bfa30',
+            animation: 'noodle-arcane-spin 6s linear infinite',
+            animationDirection: 'reverse',
+          }} />
+          {/* Central glow */}
+          <div style={{
+            position: 'absolute', inset: -6, borderRadius: '50%',
+            background: 'radial-gradient(circle, #a78bfa15, transparent 60%)',
+            animation: 'noodle-pulse 3s ease-in-out infinite',
+          }} />
+          {/* Orbiting sigil particles */}
+          {[0, 1].map(i => (
+            <div key={i} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 3, height: 3, marginLeft: -1.5, marginTop: -1.5,
+              borderRadius: '50%', background: i === 0 ? '#c4b5fd' : '#a78bfa',
+              animation: `${i === 0 ? 'noodle-orbit' : 'noodle-orbit-reverse'} ${4 + i * 2}s linear ${i}s infinite`,
+              boxShadow: `0 0 5px ${i === 0 ? '#c4b5fd' : '#a78bfa'}`,
+            }} />
+          ))}
+        </div>
+      );
+
+    case 'supernova':
+      return (
+        <div style={{ ...base }}>
+          {/* Pulsing core ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: 'conic-gradient(#fbbf24, #f59e0b, #fff, #f59e0b, #ef4444, #fbbf24)',
+            animation: 'noodle-spin 2.5s linear infinite, noodle-supernova-burst 3s ease-in-out infinite',
+            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+          }} />
+          {/* Light ray burst */}
+          <div style={{
+            position: 'absolute', inset: -8, borderRadius: '50%',
+            background: `conic-gradient(
+              transparent 0deg, #fbbf2415 5deg, transparent 10deg,
+              transparent 30deg, #fbbf2410 35deg, transparent 40deg,
+              transparent 60deg, #fbbf2412 65deg, transparent 70deg,
+              transparent 90deg, #fbbf2408 95deg, transparent 100deg,
+              transparent 120deg, #fbbf2415 125deg, transparent 130deg,
+              transparent 150deg, #fbbf2410 155deg, transparent 160deg,
+              transparent 180deg, #fbbf2412 185deg, transparent 190deg,
+              transparent 210deg, #fbbf2408 215deg, transparent 220deg,
+              transparent 240deg, #fbbf2415 245deg, transparent 250deg,
+              transparent 270deg, #fbbf2410 275deg, transparent 280deg,
+              transparent 300deg, #fbbf2412 305deg, transparent 310deg,
+              transparent 330deg, #fbbf2408 335deg, transparent 340deg,
+              transparent 360deg
+            )`,
+            animation: 'noodle-supernova-rays 6s linear infinite',
+            filter: 'blur(2px)',
+          }} />
+          {/* Outer explosive glow */}
+          <div style={{
+            position: 'absolute', inset: -6, borderRadius: '50%',
+            background: 'radial-gradient(circle, #fbbf2425, #f59e0b15, transparent 65%)',
+            animation: 'noodle-supernova-burst 3s ease-in-out infinite',
+          }} />
+          {/* Debris particles */}
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 2, height: 2, marginLeft: -1, marginTop: -1,
+              borderRadius: '50%', background: ['#fbbf24', '#fff', '#f59e0b', '#fbbf24'][i],
+              animation: `noodle-orbit ${2 + i * 0.7}s linear ${i * 0.4}s infinite`,
+              boxShadow: '0 0 4px #fbbf24',
+            }} />
+          ))}
+        </div>
+      );
+
+    case 'shadowflame':
+      return (
+        <div style={{ ...base }}>
+          {/* Dark purple fire ring */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: 'conic-gradient(#1e1b4b, #4c1d95, #7c3aed, #6d28d9, #4c1d95, #1e1b4b, #2e1065, #7c3aed, #1e1b4b)',
+            animation: 'noodle-spin 3s linear infinite',
+            mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+          }} />
+          {/* Shadow aura */}
+          <div style={{
+            position: 'absolute', inset: -6, borderRadius: '50%',
+            animation: 'noodle-shadowflame 2s ease-in-out infinite',
+          }} />
+          {/* Dark flame particles rising */}
+          {[0, 1, 2, 3, 4].map(i => (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${10 + i * 20}%`, bottom: -2,
+              width: 3, height: 3, borderRadius: '50%',
+              background: ['#7c3aed', '#a78bfa', '#6d28d9', '#c084fc', '#7c3aed'][i],
+              animation: `noodle-float ${1 + i * 0.2}s ease-out ${i * 0.2}s infinite`,
+              opacity: 0, filter: 'blur(0.5px)',
+              boxShadow: `0 0 5px ${['#7c3aed', '#a78bfa', '#6d28d9', '#c084fc', '#7c3aed'][i]}`,
+            }} />
+          ))}
+          {/* Counter-rotating shadow orbs */}
+          {[0, 1].map(i => (
+            <div key={`o${i}`} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 3, height: 3, marginLeft: -1.5, marginTop: -1.5,
+              borderRadius: '50%', background: i === 0 ? '#a78bfa' : '#6d28d9',
+              animation: `${i === 0 ? 'noodle-orbit' : 'noodle-orbit-reverse'} ${2.5 + i}s linear ${i * 0.5}s infinite`,
+              boxShadow: `0 0 6px ${i === 0 ? '#a78bfa' : '#6d28d9'}`,
             }} />
           ))}
         </div>
@@ -592,6 +1043,131 @@ function BarEffectOverlay({ effect, bannerColor }) {
           animation: 'noodle-neon-pulse 2s ease-in-out infinite',
         }} />
       );
+    case 'confetti':
+      return (
+        <div style={base}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: i%3===0?4:3, height: i%3===0?2:3,
+              borderRadius: i%2===0?'50%':'1px',
+              background: ['#f43f5e','#fbbf24','#34d399','#60a5fa','#c084fc','#fb923c','#f472b6','#22d3ee','#a3e635','#e879f9','#facc15','#38bdf8'][i],
+              left: `${(i*8+3)%90}%`, bottom: `${5+(i*11)%60}%`,
+              animation: `noodle-float ${1.2+(i%4)*0.3}s ease-out ${i*0.15}s infinite`,
+              opacity: 0, transform: `rotate(${i*30}deg)`,
+            }} />
+          ))}
+        </div>
+      );
+    case 'plasma':
+      return (
+        <div style={base}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, transparent, #38bdf815, #8b5cf615, transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'noodle-shimmer 2s linear infinite',
+            mixBlendMode: 'screen',
+          }} />
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(270deg, transparent, #d946ef10, #06b6d410, transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'noodle-shimmer 2.5s linear 0.5s infinite',
+            mixBlendMode: 'screen',
+          }} />
+        </div>
+      );
+    case 'barglitch':
+      return (
+        <div style={base}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, #f43f5e08, transparent, #22d3ee08, transparent, #a3e63508)',
+            backgroundSize: '300% 100%',
+            animation: 'noodle-aurora-bar 1.5s steps(5) infinite',
+          }} />
+          <div style={{
+            position: 'absolute', left: 0, right: 0, height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
+            animation: 'noodle-grid-scan 2s linear infinite',
+          }} />
+        </div>
+      );
+    case 'matrix':
+      return (
+        <div style={base}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: 1.5, height: 6+i%4*3,
+              background: `linear-gradient(to bottom, transparent, #00ff41${20+i%3*15})`,
+              left: `${(i*13+5)%90}%`, top: '-20%',
+              animation: `noodle-grid-scan ${1.2+i%4*0.4}s linear ${i*0.2}s infinite`,
+              opacity: 0.5+i%3*0.2,
+            }} />
+          ))}
+        </div>
+      );
+    case 'barfrost':
+      return (
+        <div style={base}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, transparent, #22d3ee08, #a5f3fc10, #ecfeff08, transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'noodle-shimmer 3.5s linear infinite',
+          }} />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: 2, height: 2, borderRadius: '50%',
+              background: i%2===0?'#a5f3fc':'#ecfeff',
+              left: `${10+i*18}%`, top: `${15+(i*23)%55}%`,
+              animation: `noodle-star-twinkle ${1.5+i%3*0.5}s ease ${i*0.4}s infinite`,
+            }} />
+          ))}
+        </div>
+      );
+    case 'barlava':
+      return (
+        <div style={base}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, transparent, #ef444410, #f9731615, #fbbf2410, transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'noodle-shimmer 2.5s linear infinite',
+          }} />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: i%2===0?3:2, height: i%2===0?3:2,
+              borderRadius: '50%',
+              background: i%3===0?'#ef4444':i%3===1?'#f97316':'#fbbf24',
+              left: `${5+i*20}%`, bottom: '10%',
+              animation: `noodle-float ${1+i*0.3}s ease-out ${i*0.25}s infinite`,
+              opacity: 0, filter: 'blur(0.5px)',
+            }} />
+          ))}
+        </div>
+      );
+    case 'rainbowwave':
+      return (
+        <div style={base}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, #ef444410, #f9731610, #fbbf2410, #22c55e10, #3b82f610, #8b5cf610, #ec489910, #ef444410)',
+            backgroundSize: '300% 100%',
+            animation: 'noodle-aurora-bar 3s linear infinite',
+            mixBlendMode: 'screen',
+          }} />
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+            animation: 'noodle-wave-move 2.5s ease-in-out infinite',
+          }} />
+        </div>
+      );
     default:
       return null;
   }
@@ -602,31 +1178,15 @@ function BarEffectOverlay({ effect, bannerColor }) {
    ══════════════════════════════════════════════════════════ */
 export default function ProfileBar() {
   const navigate = useNavigate();
-  const [p, setP] = useState({
-    name: '', bio: '', bannerColor: '#5865f2', avatar: null, streak: 0,
-    avatarDecoration: 'none', barEffect: 'none', bannerTheme: 'none',
-  });
+  const [p, setP] = useState(readProfileBarUser);
   const [isDragging, setIsDragging] = useState(false);
   const [constraints, setConstraints] = useState({ top: 0, left: 0, right: 0, bottom: 0 });
   const barRef = useRef(null);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
-  const load = () => {
-    try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
-      setP({
-        name: u.name || 'User', bio: u.bio || '',
-        bannerColor: u.bannerColor || '#5865f2', avatar: u.avatar || null,
-        streak: u.streak || 0,
-        avatarDecoration: u.avatarDecoration || 'none',
-        barEffect: u.barEffect || 'none',
-        bannerTheme: u.bannerTheme || 'none',
-      });
-    } catch {}
-  };
+  const load = () => setP(readProfileBarUser());
 
   useEffect(() => {
-    load();
     window.addEventListener('noodle_profile_update', load);
     return () => window.removeEventListener('noodle_profile_update', load);
   }, []);

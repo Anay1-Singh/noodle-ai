@@ -297,9 +297,9 @@ export default function Hard() {
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: 0, y: 0 });
   const particlesRef = useRef([]);
+  const abortControllerRef = useRef(null);
   const animFrameRef = useRef(null);
   const chatEndRef = useRef(null);
-  const dropdownRef = useRef(null);
 
   // Core state
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -309,14 +309,13 @@ export default function Hard() {
   // Profile
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [userProfile, setUserProfile] = useState({ name: '' });
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const handleAvatarSelect = (url) => {
     setProfilePhoto(url);
     const sp = localStorage.getItem('user');
     let ud = {};
-    if (sp) try { ud = JSON.parse(sp); } catch {}
+    if (sp) try { ud = JSON.parse(sp); } catch { /* Ignore malformed cached profile data. */ }
     ud.avatar = url;
     localStorage.setItem('user', JSON.stringify(ud));
     window.dispatchEvent(new Event('noodle_profile_update'));
@@ -328,6 +327,7 @@ export default function Hard() {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [thinkingText, setThinkingText] = useState('');
   const [credits, setCredits] = useState({ used: 0, limit: 30, isPremium: false });
   const [chatHistory, setChatHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState(Date.now().toString());
@@ -346,7 +346,9 @@ export default function Hard() {
           if (ud.avatar) setProfilePhoto(ud.avatar);
           setUserProfile({ name: ud.name || 'Athlete', ...ud });
         }
-      } catch (err) {}
+      } catch {
+        // Ignore malformed cached profile data and continue with defaults.
+      }
       
       const ch = await loadChatHistory('hard');
       setChatHistory(ch);
@@ -355,13 +357,10 @@ export default function Hard() {
     window.addEventListener('storage', loadProfile);
     window.addEventListener('noodle_profile_update', loadProfile);
 
-    const hco = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowProfileDropdown(false); };
-    document.addEventListener('mousedown', hco);
     const hm = (e) => { mouseRef.current = { x: e.clientX, y: e.clientY }; setMousePos({ x: e.clientX, y: e.clientY }); };
     window.addEventListener('mousemove', hm);
     return () => { 
-      document.removeEventListener('mousedown', hco); 
-      window.removeEventListener('mousemove', hm); 
+      window.removeEventListener('mousemove', hm);
       window.removeEventListener('storage', loadProfile);
       window.removeEventListener('noodle_profile_update', loadProfile);
     };
@@ -439,33 +438,13 @@ export default function Hard() {
 
   // ═══ AI CHAT FUNCTIONS ═══
 
-  const generateAIResponse = (userMsg) => {
-    const lower = userMsg.toLowerCase();
-    // Check for quick action keywords
-    for (const [key, response] of Object.entries(AI_KNOWLEDGE)) {
-      const keywords = key.split('_');
-      if (keywords.some(kw => lower.includes(kw))) {
-        return response;
-      }
-    }
-    // Check broader keywords
-    if (lower.includes('periodiz') || lower.includes('mesocycle') || lower.includes('12 week') || lower.includes('program')) return AI_KNOWLEDGE.periodization;
-    if (lower.includes('comp') || lower.includes('prep') || lower.includes('cut') || lower.includes('bulk') || lower.includes('offseason')) return AI_KNOWLEDGE.competition_prep;
-    if (lower.includes('body') || lower.includes('fat') || lower.includes('lean') || lower.includes('composition') || lower.includes('bf%')) return AI_KNOWLEDGE.body_composition;
-    if (lower.includes('suppl') || lower.includes('creatine') || lower.includes('protein') || lower.includes('vitamin')) return AI_KNOWLEDGE.supplements;
-    if (lower.includes('peak') || lower.includes('show') || lower.includes('stage') || lower.includes('depletion') || lower.includes('carb load')) return AI_KNOWLEDGE.peak_week;
-    if (lower.includes('split') || lower.includes('ppl') || lower.includes('push pull') || lower.includes('routine') || lower.includes('training')) return AI_KNOWLEDGE.training_split;
-    if (lower.includes('macro') || lower.includes('carb') || lower.includes('calorie') || lower.includes('nutrition') || lower.includes('diet')) return AI_KNOWLEDGE.macro_cycling;
-    if (lower.includes('recov') || lower.includes('sleep') || lower.includes('rest') || lower.includes('deload') || lower.includes('stress')) return AI_KNOWLEDGE.recovery;
-    // Fallback
-    return AI_GENERAL_RESPONSES[Math.floor(Math.random() * AI_GENERAL_RESPONSES.length)];
-  };
-
   const fetchCredits = async () => {
     try {
       const res = await fetch('http://localhost:5000/api/ai/credits?tier=hard', { credentials: 'include' });
       if (res.ok) { const data = await res.json(); setCredits(data); }
-    } catch { }
+    } catch {
+      // Credits are optional for rendering the dashboard shell.
+    }
   };
   useEffect(() => { fetchCredits(); }, []);
   const limitReached = !credits.isPremium && credits.used >= credits.limit;
@@ -478,12 +457,14 @@ export default function Hard() {
     const newMsgs = [...chatMessages, { role: 'user', text: userMsg }];
     setChatMessages(newMsgs);
     setIsTyping(true);
+    abortControllerRef.current = new AbortController();
     try {
       const res = await fetch('http://localhost:5000/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ message: userMsg, tier: 'hard' }),
+        signal: abortControllerRef.current.signal
       });
       if (res.status === 403) {
         setChatMessages([...newMsgs, { role: 'ai', text: 'Daily message limit reached. Come back tomorrow or upgrade to Premium!' }]);
@@ -491,7 +472,7 @@ export default function Hard() {
       }
       if (!res.ok) {
         let errMessage = 'Sorry, something went wrong.';
-        try { const data = await res.json(); errMessage = data.message; } catch(e){}
+        try { const data = await res.json(); errMessage = data.message; } catch { /* Use fallback message when the API returns a non-JSON error. */ }
         setChatMessages([...newMsgs, { role: 'ai', text: errMessage }]);
         fetchCredits(); setIsTyping(false); return;
       }
@@ -499,19 +480,67 @@ export default function Hard() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let aiText = '';
+      let thinking = '';
+      let buffer = '';
       let isFirstChunk = true;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (isFirstChunk) { setIsTyping(false); isFirstChunk = false; }
-        aiText += decoder.decode(value, { stream: true });
-        setChatMessages([...newMsgs, { role: 'ai', text: aiText }]);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n');
+          buffer = parts.pop();
+
+          for (const line of parts) {
+              if (!line.trim()) continue;
+              try {
+                  const parsed = JSON.parse(line);
+                  if (parsed.type === 'thinking') {
+                      thinking += parsed.text;
+                      setThinkingText(thinking);
+                  } else if (parsed.type === 'answer') {
+                      if (thinking) {
+                          setThinkingText('');
+                          thinking = '';
+                      }
+                      if (isFirstChunk) { setIsTyping(false); isFirstChunk = false; }
+                      aiText += parsed.text;
+                      setChatMessages([...newMsgs, { role: 'ai', text: aiText }]);
+                  }
+              } catch {
+                // Ignore malformed stream fragments and keep reading.
+              }
+          }
+        }
+      } catch (streamErr) {
+        if (streamErr.name !== 'AbortError') throw streamErr;
       }
+      
+      setThinkingText('');
+      if (isFirstChunk) setIsTyping(false);
+      
+      const finalMsgs = [...newMsgs, { role: 'ai', text: aiText }];
+      const first = newMsgs.find(m => m.role === 'user');
+      const title = first ? first.text.slice(0, 35) + (first.text.length > 35 ? '...' : '') : 'Untitled';
+      const id = activeChatId || Date.now().toString();
+      const cd = { id, title, messages: finalMsgs, date: new Date().toISOString() };
+      setChatHistory(prev => [cd, ...prev.filter(c => c.id !== id)]);
+      saveChatSession('hard', id, cd);
+      
       fetchCredits();
     } catch (err) {
-      setChatMessages([...newMsgs, { role: 'ai', text: 'Could not reach the AI server. Please try again later.' }]);
-      setIsTyping(false);
+      if (err.name === 'AbortError') {
+        const title = newMsgs[0] ? newMsgs[0].text.slice(0, 35) : 'Untitled';
+        const id = activeChatId || Date.now().toString();
+        const cd = { id, title, messages: newMsgs, date: new Date().toISOString() };
+        setChatHistory(prev => [cd, ...prev.filter(c => c.id !== id)]);
+        setIsTyping(false); setThinkingText(''); fetchCredits();
+      } else {
+        setChatMessages([...newMsgs, { role: 'ai', text: 'Could not reach the AI server. Please try again later.' }]);
+        setIsTyping(false); setThinkingText('');
+      }
     }
   };
 
@@ -540,10 +569,11 @@ export default function Hard() {
 
   const loadChat = (ch) => { saveCurrentChat(); setChatMessages(ch.messages); setActiveChatId(ch.id); setShowQuickActions(false); };
   const deleteChat = (id) => { setChatHistory(prev => prev.filter(c => c.id !== id)); deleteChatSession('hard', id); if (activeChatId === id) startNewChat(); };
+  const stopChat = () => { if (abortControllerRef.current) abortControllerRef.current.abort(); };
 
   // ═══ RENDER HELPERS ═══
 
-  const renderFormattedText = (text) => {
+  const RENDER_FORMATTED_TEXT = (text) => {
     if (!text) return null;
     const lines = text.split('\n');
     return lines.map((line, i) => {
@@ -593,7 +623,9 @@ export default function Hard() {
       tier="hard"
       messages={chatMessages}
       onSend={sendMessage}
+      onStop={stopChat}
       isLoading={isTyping}
+      thinkingText={thinkingText}
       onClose={() => setChatFullscreen(false)}
       userName={userProfile?.name || 'Champion'}
       userAvatar={profilePhoto}
