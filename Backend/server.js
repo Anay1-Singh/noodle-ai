@@ -65,6 +65,10 @@ app.get("/", (req, res) => {
   res.send("Noodle Backend is running");
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'alive' });
+});
+
 // 🔴 CONNECT TO MONGODB (EDIT THIS LINE ONLY)
 mongoose
   .connect(process.env.MONGO_URI)
