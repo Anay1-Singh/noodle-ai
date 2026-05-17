@@ -97,7 +97,7 @@ export default function ProfileEdit() {
     const fetchProfile = async () => {
       let u = {};
       try {
-        const res = await fetch('http://localhost:5000/api/user/me', {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/me`, {
           credentials: 'include'
         });
         if (res.ok) {
@@ -157,7 +157,7 @@ export default function ProfileEdit() {
       window.dispatchEvent(new Event('noodle_profile_update'));
 
       // Sync to backend rigorously as source of truth
-      await fetch('http://localhost:5000/api/user/profile', {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

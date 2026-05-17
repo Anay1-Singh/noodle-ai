@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children }) {
     const [status, setStatus] = useState("loading"); // "loading" | "authenticated" | "unauthenticated"
 
     useEffect(() => {
-        fetch("http://localhost:5000/api/user/me", {
+        fetch(`${import.meta.env.VITE_API_URL}/api/user/me`, {
             credentials: "include",
         })
             .then((res) => {

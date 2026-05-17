@@ -1,6 +1,6 @@
 export const loadChatHistory = async (tierFilter) => {
   try {
-    const res = await fetch("http://localhost:5000/api/chat/history", {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/chat/history`, {
       credentials: "include"
     });
 
@@ -23,7 +23,7 @@ export const saveChatSession = async (tier, chatId, chatData) => {
     // Build the finalized chat object matching the MongoDB schema exactly:
     const finalizedChat = { ...chatData, tier, id: chatId };
 
-    const res = await fetch("http://localhost:5000/api/chat/save", {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/chat/save`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -42,7 +42,7 @@ export const saveChatSession = async (tier, chatId, chatData) => {
 
 export const deleteChatSession = async (tier, chatId) => {
   try {
-    const res = await fetch(`http://localhost:5000/api/chat/${chatId}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/chat/${chatId}`, {
       method: "DELETE",
       credentials: "include"
     });

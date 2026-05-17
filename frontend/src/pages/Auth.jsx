@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from "framer-motion";
 import NoodleXButton from "../components/NoodleXButton";
-const API = "http://localhost:5000/api/auth";
+const API = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 /* ═══════════════════════════════════════════════════════
    PASSWORD VALIDATION
@@ -224,7 +224,7 @@ export default function Auth() {
   function onCardLeave() { mx.set(0); my.set(0); }
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/user/me", { credentials: "include" })
+    fetch(`${import.meta.env.VITE_API_URL}/api/user/me`, { credentials: "include" })
       .then(res => { if (!res.ok) throw new Error(); return res.json(); })
       .then(data => { if (data.user) { localStorage.setItem("user", JSON.stringify(data.user)); navigate("/hub"); } })
       .catch(() => { });

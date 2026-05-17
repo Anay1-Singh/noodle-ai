@@ -440,7 +440,7 @@ export default function Hard() {
 
   const fetchCredits = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/ai/credits?tier=hard', { credentials: 'include' });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/credits?tier=hard`, { credentials: 'include' });
       if (res.ok) { const data = await res.json(); setCredits(data); }
     } catch {
       // Credits are optional for rendering the dashboard shell.
@@ -459,7 +459,7 @@ export default function Hard() {
     setIsTyping(true);
     abortControllerRef.current = new AbortController();
     try {
-      const res = await fetch('http://localhost:5000/api/ai/chat', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

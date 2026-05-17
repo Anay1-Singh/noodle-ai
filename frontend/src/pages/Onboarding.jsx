@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Shield, Check, ChevronRight } from "lucide-react";
 import NoodleXButton from "../components/NoodleXButton";
 
-const API = "http://localhost:5000/api/user";
+const API = `${import.meta.env.VITE_API_URL}/api/user`;
 
 const avatars = Array.from(
     { length: 50 },

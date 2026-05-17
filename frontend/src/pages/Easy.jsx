@@ -145,7 +145,7 @@ export default function EasyDashboard() {
       }
       const ch = await loadChatHistory('easy'); setChatHistory(ch);
       try {
-        const r = await fetch('http://localhost:5000/api/user/wellness', { credentials: 'include' });
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/api/user/wellness`, { credentials: 'include' });
         if (r.ok) { const d = await r.json(); const today = new Date().toDateString();
           if (d.date === today) { const moods = d.moodLog||[]; setSteps(d.steps||0); setCalories(d.calories||0); setActiveMins(d.activeMins||0); setWaterGlasses(d.water||0); setSleepHours(d.sleep||0); setStreak(d.streak||0); setWeeklyActivity(d.weekly||[0,0,0,0,0,0,0]); setMoodLog(moods); setActiveMood(moods[0]?.label || null); setActivityLog(d.activityLog||[]); }
         }
@@ -162,7 +162,7 @@ export default function EasyDashboard() {
   useEffect(() => {
     if (!wellnessLoaded) return undefined;
     const timeout = setTimeout(() => {
-      fetch('http://localhost:5000/api/user/wellness', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      fetch(`${import.meta.env.VITE_API_URL}/api/user/wellness`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ date: new Date().toDateString(), steps, calories, activeMins, water: waterGlasses, sleep: sleepHours, streak, weekly: weeklyActivity, moodLog, activityLog })
       }).catch(() => {
         // Save will retry on the next change.
@@ -180,7 +180,7 @@ export default function EasyDashboard() {
     setActivityLog(p => [{ name, cals, mins, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }, ...p.slice(0, 9)]);
   };
 
-  const fetchCredits = async () => { try { const r = await fetch('http://localhost:5000/api/ai/credits?tier=easy', { credentials: 'include' }); if (r.ok) setCredits(await r.json()); } catch { /* Credits are optional for rendering the dashboard shell. */ } };
+  const fetchCredits = async () => { try { const r = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/credits?tier=easy`, { credentials: 'include' }); if (r.ok) setCredits(await r.json()); } catch { /* Credits are optional for rendering the dashboard shell. */ } };
   useEffect(() => { fetchCredits(); }, []);
 
   const sendChat = async (msg) => {
@@ -188,7 +188,7 @@ export default function EasyDashboard() {
     const nm = [...chatMessages, { role: 'user', text: msg }]; setChatMessages(nm); setAiLoading(true);
     abortControllerRef.current = new AbortController();
     try {
-      const r = await fetch('http://localhost:5000/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ message: msg, tier: 'easy' }), signal: abortControllerRef.current.signal });
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ message: msg, tier: 'easy' }), signal: abortControllerRef.current.signal });
       if (r.status === 403) { setChatMessages([...nm, { role: 'ai', text: 'Daily limit reached.' }]); fetchCredits(); setAiLoading(false); return; }
       if (!r.ok) { let eMsg = 'Error occurred.'; try { const d = await r.json(); eMsg = d.message; } catch { /* Use fallback message when the API returns a non-JSON error. */ } setChatMessages([...nm, { role: 'ai', text: eMsg }]); setAiLoading(false); return; }
       const reader = r.body.getReader(); const decoder = new TextDecoder(); let aiText = ''; let thinking = ''; let buffer = ''; let isFirstChunk = true;
